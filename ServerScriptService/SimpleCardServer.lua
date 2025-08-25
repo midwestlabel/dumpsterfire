@@ -532,14 +532,14 @@ local function spawnConveyorCard()
 	print("🎴 DEBUG: conveyorLength =", conveyorLength)
 	local cardObject = Instance.new("Part")
 	cardObject.Name = "ConveyorCard_" .. cardData.name
-	cardObject.Size = Vector3.new(0.2, 3, 2)  -- Standing upright: thin, tall, card-width
-	cardObject.Position = Vector3.new(-conveyorLength/2, 2.5, 0)  -- Higher up, standing on conveyor
+	cardObject.Size = Vector3.new(0.4, 6, 4)  -- DOUBLED: thin, tall, card-width (was 0.2, 3, 2)
+	cardObject.Position = Vector3.new(-conveyorLength/2, 4, 0)  -- Higher position for larger card
 	cardObject.Anchored = true
 	cardObject.CanCollide = false
 	cardObject.Material = Enum.Material.SmoothPlastic
 	cardObject.BrickColor = BrickColor.new("White")
 	cardObject.Parent = workspace
-	print("🎴 DEBUG: Card object created at position:", cardObject.Position)
+	print("🎴 DEBUG: DOUBLE SIZE Card object created at position:", cardObject.Position)
 
 	-- Add card display on the flat sides (Left and Right faces since card is standing upright)
 	-- The card is oriented as: X=thin, Y=height, Z=width, so Left/Right faces are the flat sides
@@ -568,80 +568,29 @@ local function spawnConveyorCard()
 	}
 	local rarityColor = rarityColors[cardData.rarity] or Color3.fromRGB(150, 150, 150)
 
-	-- Create visual card design instead of relying on external images
-	local cardIcon = Instance.new("TextLabel")
-	cardIcon.Size = UDim2.new(1, 0, 0.65, 0)  -- Much larger - 65% of card height
-	cardIcon.Position = UDim2.new(0, 0, 0.02, 0)  -- Start near the top
-	cardIcon.BackgroundColor3 = rarityColor
-	cardIcon.BackgroundTransparency = 0.2  -- Less transparent for better visibility
-	cardIcon.BorderSizePixel = 2  -- Thicker border
-	cardIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	cardIcon.Parent = cardFrame
+	-- TEST: Full-face image (100% coverage, no text)
+	local cardImage = Instance.new("ImageLabel")
+	cardImage.Size = UDim2.new(1, 0, 1, 0)  -- 100% of the card face
+	cardImage.Position = UDim2.new(0, 0, 0, 0)  -- Fill entire face
+	cardImage.BackgroundTransparency = 1  -- Transparent background
+	cardImage.Image = "rbxassetid://114385430622242"  -- Your custom test image
+	cardImage.ScaleType = Enum.ScaleType.Stretch  -- Stretch to fill (allows distortion as requested)
+	cardImage.BorderSizePixel = 0  -- No border for clean full-face look
+	cardImage.Parent = cardFrame
 
-	-- Add card type emoji based on card type
-	local typeEmojis = {
-		["Animal"] = "🐺",
-		["Item"] = "⚒️",
-		["Environment"] = "🌵",
-		["Plant"] = "🌸",
-		["Structure"] = "🏠",
-		["Vehicle"] = "🚂",
-		["Weapon"] = "🔫",
-		["Character"] = "🤠",
-		["Location"] = "🏛️"
-	}
-	local emoji = typeEmojis[cardData.type or "Item"] or "🎴"
-	
-	cardIcon.Text = emoji
-	cardIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
-	cardIcon.TextSize = 120  -- Much larger emoji
-	cardIcon.Font = Enum.Font.GothamBold
-	cardIcon.Parent = cardFrame
-
-	-- Add rounded corners to the icon
-	local iconCorner = Instance.new("UICorner")
-	iconCorner.CornerRadius = UDim.new(0, 12)  -- Larger corner radius
-	iconCorner.Parent = cardIcon
-
-	local cardName = Instance.new("TextLabel")
-	cardName.Size = UDim2.new(1, 0, 0.18, 0)  -- Slightly smaller to fit
-	cardName.Position = UDim2.new(0, 0, 0.68, 0)  -- Position below the large icon
-	cardName.BackgroundTransparency = 1
-	cardName.Text = cardData.name
-	cardName.TextColor3 = Color3.fromRGB(0, 0, 0)
-	cardName.TextScaled = true
-	cardName.Font = Enum.Font.GothamBold
-	cardName.Parent = cardFrame
-
-	-- Add rarity label
-	local rarityLabel = Instance.new("TextLabel")
-	rarityLabel.Size = UDim2.new(1, 0, 0.08, 0)  -- Smaller but still visible
-	rarityLabel.Position = UDim2.new(0, 0, 0.86, 0)
-	rarityLabel.BackgroundTransparency = 1
-	rarityLabel.Text = cardData.rarityString or "Common"
-	rarityLabel.TextColor3 = rarityColor
-	rarityLabel.TextScaled = true
-	rarityLabel.Font = Enum.Font.GothamBold  -- Bold for better visibility
-	rarityLabel.Parent = cardFrame
-
-	local costLabel = Instance.new("TextLabel")
-	costLabel.Size = UDim2.new(1, 0, 0.06, 0)  -- Compact but readable
-	costLabel.Position = UDim2.new(0, 0, 0.94, 0)  -- Bottom of card
-	costLabel.BackgroundTransparency = 1
-	costLabel.Text = "💰 " .. cost
-	costLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	costLabel.TextScaled = true
-	costLabel.Font = Enum.Font.GothamBold
-	costLabel.Parent = cardFrame
+	-- Add rounded corners to match card frame
+	local imageCorner = Instance.new("UICorner")
+	imageCorner.CornerRadius = UDim.new(0, 8)  -- Match the card frame corners
+	imageCorner.Parent = cardImage
 
 	-- Create the same design for the right face
 	local cardFrameRight = cardFrame:Clone()
 	cardFrameRight.Parent = cardGuiRight
 
-	-- Add proximity detection for claiming
+	-- Add proximity detection for claiming (scaled for double-size card)
 	local proximityZone = Instance.new("Part")
 	proximityZone.Name = "ProximityZone"
-	proximityZone.Size = Vector3.new(6, 4, 6)  -- Large claim area
+	proximityZone.Size = Vector3.new(8, 8, 8)  -- Larger claim area for bigger card
 	proximityZone.Position = cardObject.Position + Vector3.new(0, 1, 0)
 	proximityZone.Anchored = true
 	proximityZone.CanCollide = false
