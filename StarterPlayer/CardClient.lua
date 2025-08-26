@@ -802,10 +802,10 @@ function CardClient:CreateNavigationButton()
 	-- Add display table button (always visible)
 	local displayButton = Instance.new("TextButton")
 	displayButton.Name = "DisplayTableButton"
-	displayButton.Size = UDim2.new(0, 150, 0, 40)
-	displayButton.Position = UDim2.new(0.5, -75, 0, 60)
+	displayButton.Size = UDim2.new(0, 200, 0, 40)
+	displayButton.Position = UDim2.new(0.5, -100, 0, 60)
 	displayButton.BackgroundColor3 = Color3.fromRGB(200, 150, 100)
-	displayButton.Text = "🏠 Display Table"
+	displayButton.Text = "💰 Display Cards to Earn Money"
 	displayButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	displayButton.TextSize = 16
 	displayButton.Font = Enum.Font.GothamBold
@@ -822,14 +822,16 @@ function CardClient:CreateNavigationButton()
 	self:CreateButtonStyle(displayButton)
 
 	displayButton.MouseButton1Click:Connect(function()
-		self:OpenDisplayTable()
+		CardClient:OpenDisplayTable()
 	end)
+
+	-- Money display removed - using leaderboard instead
 
 	-- Add server status display
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "ServerStatusLabel"
 	statusLabel.Size = UDim2.new(0, 200, 0, 20)
-	statusLabel.Position = UDim2.new(0.5, -100, 0, 110)
+	statusLabel.Position = UDim2.new(0.5, -100, 0, 110) -- Back to original position
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.Text = "🔄 Connecting to server..."
 	statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -873,10 +875,10 @@ end
 function CardClient:UpdateDisplayTableButton(tableNumber)
 	if self.DisplayTableButton then
 		if tableNumber then
-			self.DisplayTableButton.Text = "🏠 Table " .. tableNumber
+			self.DisplayTableButton.Text = "💰 Display Cards (Table " .. tableNumber .. ")"
 			print("🏠 Updated display table button to show table", tableNumber)
 		else
-			self.DisplayTableButton.Text = "🏠 Display Table"
+			self.DisplayTableButton.Text = "💰 Display Cards to Earn Money"
 			print("🏠 Reset display table button text")
 		end
 	else
@@ -905,6 +907,44 @@ function CardClient:UpdateServerStatus(status, color)
 	else
 		print("❌ Server status label is nil! Cannot update status")
 	end
+end
+
+-- Function to update leaderboard
+function CardClient:UpdateLeaderboard(newCoins)
+	local player = Players.LocalPlayer
+	
+	-- Create leaderstats folder if it doesn't exist
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then
+		leaderstats = Instance.new("Folder")
+		leaderstats.Name = "leaderstats"
+		leaderstats.Parent = player
+	end
+	
+	-- Create or update coins value
+	local coinsValue = leaderstats:FindFirstChild("Coins")
+	if not coinsValue then
+		coinsValue = Instance.new("IntValue")
+		coinsValue.Name = "Coins"
+		coinsValue.Parent = leaderstats
+	end
+	
+	coinsValue.Value = newCoins
+end
+
+-- Function to update money displays (main UI and leaderboard)
+function CardClient:UpdateMoneyDisplay(newCoins)
+	-- Update main UI coins label
+	local screenGui = playerGui:FindFirstChild("CardGameUI")
+	if screenGui then
+		local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
+		coinsLabel.Text = "Coins: " .. newCoins
+	end
+	
+	-- Update leaderboard
+	CardClient:UpdateLeaderboard(newCoins)
+	
+	print("💰 Updated money displays to:", newCoins, "coins")
 end
 
 function CardClient:ShowCardDetail(card)
@@ -1862,12 +1902,8 @@ local loadingScreen = CardClient:ShowLoadingScreen()
 local mainUI = CardClient:CreateMainUI()
 mainUI.Enabled = false  -- Hide the main UI initially
 
--- Create navigation button but keep it hidden initially
+-- Create navigation button (always visible)
 CardClient:CreateNavigationButton()
-local navGui = playerGui:FindFirstChild("CardNavigation")
-if navGui then
-	navGui.Enabled = false  -- Hide navigation initially
-end
 
 -- Load player's saved data
 local function loadPlayerData()
@@ -1882,12 +1918,11 @@ local function loadPlayerData()
 			CardClient:UpdateCollection()
 
 			-- Update coin display
+			CardClient:UpdateMoneyDisplay(playerData.coins or 500)
+
+			-- Update mutation counter
 			local screenGui = playerGui:FindFirstChild("CardGameUI")
 			if screenGui then
-				local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
-				coinsLabel.Text = "Coins: " .. (playerData.coins or 500)
-
-				-- Update mutation counter
 				local mutationLabel = screenGui.MainFrame.TopBar:FindFirstChild("MutationLabel")
 				if mutationLabel then
 					local mutatedCardCount = 0
@@ -1926,11 +1961,7 @@ local function loadPlayerData()
 		end)
 	end
 
-	-- Show navigation buttons after welcome screen fades
-	local navGui = playerGui:FindFirstChild("CardNavigation")
-	if navGui then
-		navGui.Enabled = true
-	end
+	-- Navigation buttons are always visible now
 
 	-- Keep main card UI hidden until player clicks "Open Cards" button
 	-- The main UI will be shown when they click the navigation button
@@ -1962,11 +1993,7 @@ if packOpenedEvent then
 		end
 
 		-- Update UI with new coin count
-		local screenGui = playerGui:FindFirstChild("CardGameUI")
-		if screenGui then
-			local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
-			coinsLabel.Text = "Coins: " .. result.newCoins
-		end
+		CardClient:UpdateMoneyDisplay(result.newCoins)
 
 
 	end)
@@ -1990,11 +2017,7 @@ if dailyRewardEvent then
 		end
 
 		-- Update coin display
-		local screenGui = playerGui:FindFirstChild("CardGameUI")
-		if screenGui then
-			local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
-			coinsLabel.Text = "Coins: " .. reward.newCoins
-		end
+		CardClient:UpdateMoneyDisplay(reward.newCoins)
 	end)
 end
 
@@ -2066,14 +2089,13 @@ if cardSoldEvent then
 			end
 
 			-- Update coin display
+			if saleData.newCoins then
+				CardClient:UpdateMoneyDisplay(saleData.newCoins)
+			end
+
+			-- Also update collection count in top bar if it exists  
 			local screenGui = playerGui:FindFirstChild("CardGameUI")
 			if screenGui then
-				local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
-				if saleData.newCoins then
-					coinsLabel.Text = "Coins: " .. saleData.newCoins
-				end
-
-				-- Also update collection count in top bar if it exists
 				local collectionLabel = screenGui.MainFrame.TopBar:FindFirstChild("CollectionLabel")
 				if collectionLabel then
 					collectionLabel.Text = "Collection: " .. #CardClient.PlayerCards .. " cards"
@@ -2161,11 +2183,7 @@ if cardSoldEvent then
 			CardClient:UpdateCollection()
 
 			-- Update coin display
-			local screenGui = playerGui:FindFirstChild("CardGameUI")
-			if screenGui then
-				local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
-				coinsLabel.Text = "Coins: " .. saleData.newCoins
-			end
+			CardClient:UpdateMoneyDisplay(saleData.newCoins)
 
 			-- Show sale notification
 			CardClient:ShowSaleNotification(saleData)
@@ -2184,7 +2202,7 @@ if collectionRewardEvent then
 		if screenGui then
 			local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
 			local currentCoins = tonumber(coinsLabel.Text:match("%d+")) or 0
-			coinsLabel.Text = "Coins: " .. (currentCoins + reward.coins)
+			CardClient:UpdateMoneyDisplay(currentCoins + reward.coins)
 		end
 	end)
 end
@@ -2233,15 +2251,8 @@ if setSoldEvent then
 			CardClient:ShowSetSaleNotification(result)
 
 			-- Update coin display immediately after set sale
-			local screenGui = playerGui:FindFirstChild("CardGameUI")
-			if screenGui then
-				local coinsLabel = screenGui.MainFrame.TopBar.CoinsLabel
-				if coinsLabel then
-					-- Use the newCoins value from the server result
-					coinsLabel.Text = "Coins: " .. result.newCoins
-					print("💰 Updated coins display after set sale to:", result.newCoins)
-				end
-			end
+			CardClient:UpdateMoneyDisplay(result.newCoins)
+			print("💰 Updated coins display after set sale to:", result.newCoins)
 
 			-- Update UI
 			CardClient:UpdateCollection()
@@ -2294,7 +2305,7 @@ local function connectToTableAssignment()
 		-- Fallback: if no assignment received within 15 seconds, show waiting status
 		spawn(function()
 			wait(15)
-			if not CardClient.DisplayTableButton or CardClient.DisplayTableButton.Text == "🏠 Display Table" then
+			if not CardClient.DisplayTableButton or CardClient.DisplayTableButton.Text == "💰 Display Cards to Earn Money" then
 				print("⏰ No table assignment received, showing waiting status")
 				CardClient:UpdateServerStatus("⏰ Waiting for table assignment...", Color3.fromRGB(255, 200, 100))
 			end
@@ -2663,8 +2674,8 @@ function CardClient:OpenDisplayTable()
 
 	local displayFrame = Instance.new("Frame")
 	displayFrame.Name = "DisplayTablePopup"
-	displayFrame.Size = UDim2.new(0, 800, 0, 600)
-	displayFrame.Position = UDim2.new(0.5, -400, 0.5, -300)
+	displayFrame.Size = UDim2.new(0, 500, 0, 400) -- Smaller for mobile
+	displayFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
 	displayFrame.BackgroundColor3 = Color3.fromRGB(40, 50, 70)
 	displayFrame.BorderSizePixel = 0
 	displayFrame.Parent = displayGui
@@ -2689,7 +2700,7 @@ function CardClient:OpenDisplayTable()
 	moneyDisplay.Size = UDim2.new(0, 300, 0, 30)
 	moneyDisplay.Position = UDim2.new(0, 20, 0, 60)
 	moneyDisplay.BackgroundTransparency = 1
-	moneyDisplay.Text = "💰 Earning: 0 coins/sec (0 cards displayed)"
+	moneyDisplay.Text = "💰 Earning: 0 coins/sec (0/4 cards displayed)"
 	moneyDisplay.TextColor3 = Color3.fromRGB(100, 255, 100)
 	moneyDisplay.TextSize = 16
 	moneyDisplay.Font = Enum.Font.Gotham
@@ -2698,14 +2709,14 @@ function CardClient:OpenDisplayTable()
 	-- Store reference for updates
 	self.MoneyDisplayLabel = moneyDisplay
 
-	-- Close button
+	-- Close button (bigger for mobile)
 	local closeButton = Instance.new("TextButton")
-	closeButton.Size = UDim2.new(0, 30, 0, 30)
-	closeButton.Position = UDim2.new(1, -35, 0, 10)
-	closeButton.BackgroundColor3 = Color3.fromRGB(200, 100, 100)
-	closeButton.Text = "×"
+	closeButton.Size = UDim2.new(0, 50, 0, 40) -- Bigger for mobile touch
+	closeButton.Position = UDim2.new(1, -55, 0, 5)
+	closeButton.BackgroundColor3 = Color3.fromRGB(220, 100, 100)
+	closeButton.Text = "✕ CLOSE"
 	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeButton.TextSize = 20
+	closeButton.TextSize = 14
 	closeButton.Font = Enum.Font.GothamBold
 	closeButton.Parent = displayFrame
 
@@ -2733,10 +2744,10 @@ function CardClient:OpenDisplayTable()
 	displayCorner.CornerRadius = UDim.new(0, 8)
 	displayCorner.Parent = displayArea
 
-	-- Grid layout for displayed cards
+	-- Grid layout for displayed cards (2x2 for 4 cards max)
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellSize = UDim2.new(0, 120, 0, 160)
-	gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+	gridLayout.CellSize = UDim2.new(0, 110, 0, 140) -- Smaller cells for mobile
+	gridLayout.CellPadding = UDim2.new(0, 8, 0, 8)
 	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	gridLayout.Parent = displayArea
 
@@ -2749,10 +2760,10 @@ function CardClient:OpenDisplayTable()
 			child:Destroy()
 		end
 
-		-- Recreate grid layout
+		-- Recreate grid layout (2x2 for 4 cards max)
 		local newGridLayout = Instance.new("UIGridLayout")
-		newGridLayout.CellSize = UDim2.new(0, 120, 0, 160)
-		newGridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+		newGridLayout.CellSize = UDim2.new(0, 110, 0, 140) -- Smaller cells for mobile
+		newGridLayout.CellPadding = UDim2.new(0, 8, 0, 8)
 		newGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		newGridLayout.Parent = displayArea
 
@@ -2775,8 +2786,8 @@ function CardClient:OpenDisplayTable()
 		-- Add "Add Card" button if player has cards and space
 		if self.PlayerCards and #self.PlayerCards > 0 then
 			local currentDisplayCount = self.DisplayedCards and #self.DisplayedCards or 0
-			if currentDisplayCount < 10 then
-				print("➕ Adding 'Add Card' button (current:", currentDisplayCount, "/10)")
+			if currentDisplayCount < 4 then
+				print("➕ Adding 'Add Card' button (current:", currentDisplayCount, "/4)")
 				self:CreateAddCardButton(displayArea, currentDisplayCount + 1)
 			end
 		end
@@ -3222,7 +3233,7 @@ function CardClient:UpdateMoneyDisplay()
 		local coinsPerSecond = displayCount -- 1 coin per second per card
 		local totalEarning = displayCount * coinsPerSecond
 
-		self.MoneyDisplayLabel.Text = string.format("💰 Earning: %d coins/sec (%d cards displayed)", totalEarning, displayCount)
+		self.MoneyDisplayLabel.Text = string.format("💰 Earning: %d coins/sec (%d/4 cards displayed)", totalEarning, displayCount)
 
 		-- Update color based on earning amount
 		if totalEarning > 0 then
@@ -3382,4 +3393,4 @@ collectMoneyEvent.OnClientEvent:Connect(function(result)
 	end
 end)
 
-return CardClient
+-- Script execution complete

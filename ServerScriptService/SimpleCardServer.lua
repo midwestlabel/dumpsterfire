@@ -32,7 +32,7 @@ local BattleCooldowns = {} -- Track when players can battle again (5 minute cool
 -- Money earning system for displayed cards (tycoon style)
 local DisplayCardEarnings = {} -- Track money earned by each player's displayed cards
 local MoneyCollectionMats = {} -- Store references to money collection mats
-local MaxDisplayCards = 10 -- Maximum cards a player can display
+local MaxDisplayCards = 4 -- Maximum cards a player can display (reduced for visual table layout)
 -- MoneyEarningRate removed - now each card has its own earningsPerSecond value
 local MoneyCollectionCooldown = 10 -- Seconds between money collections
 
@@ -455,7 +455,7 @@ print("🎴 Setting up conveyor card system...")
 
 -- Global variables for conveyor system
 local ConveyorCards = {}  -- Active cards on the conveyor
-local ConveyorClaimCosts = {10, 25, 50, 100, 200}  -- Costs for different rarity cards
+local ConveyorClaimCosts = {10, 25, 50, 100, 200, 5000}  -- Costs: Common, Uncommon, Rare, UltraRare, Secret, Legendary
 local PlayersClaimingCards = {}  -- Players currently claiming cards
 local ConveyorSpeed = 0.2  -- Studs per second movement speed (even slower for easier claiming)
 
@@ -466,21 +466,78 @@ local function getRarityNumber(rarityString)
 		["Uncommon"] = 2,
 		["Rare"] = 3,
 		["UltraRare"] = 4,
-		["Secret"] = 5
+		["Secret"] = 5,
+		["Legendary"] = 6  -- Added for stretch goal cards
 	}
 	return rarityMap[rarityString] or 1
 end
 
--- Function to generate a single random card (for conveyor system)
-local function generateCard()
+-- Helper function to get a random card from pool with weighted rarity
+-- forConveyor: if true, uses conveyor weights (frequent legendaries), if false uses pack weights (rare legendaries)
+local function getRandomCardFromPool(forConveyor)
 	if not cardPool or #cardPool == 0 then
 		print("❌ ERROR: cardPool is not available or empty")
 		return nil
 	end
 
-	local randomCard = cardPool[math.random(#cardPool)]
+	-- Different rarity weights for conveyor vs packs
+	local rarityRoll = math.random(1, 100)
+	local targetRarity
+	
+	if forConveyor then
+		-- CONVEYOR WEIGHTS: Legendaries appear frequently but cost full price
+		if rarityRoll <= 45 then
+			targetRarity = "Common"
+		elseif rarityRoll <= 70 then
+			targetRarity = "Uncommon" 
+		elseif rarityRoll <= 85 then
+			targetRarity = "Rare"
+		elseif rarityRoll <= 95 then
+			targetRarity = "UltraRare"
+		elseif rarityRoll <= 98 then
+			targetRarity = "Secret"
+		else
+			targetRarity = "Legendary"  -- 2% chance on conveyor (still rare but accessible)
+		end
+	else
+		-- PACK WEIGHTS: Legendaries are extremely rare in packs
+		if rarityRoll <= 65 then
+			targetRarity = "Common"
+		elseif rarityRoll <= 85 then
+			targetRarity = "Uncommon" 
+		elseif rarityRoll <= 94 then
+			targetRarity = "Rare"
+		elseif rarityRoll <= 98 then
+			targetRarity = "UltraRare"
+		elseif rarityRoll <= 99 then
+			targetRarity = "Secret"
+		else
+			targetRarity = "Legendary"  -- Only 1% chance in packs (extremely rare)
+		end
+	end
+	
+	-- Filter cards by target rarity
+	local availableCards = {}
+	for _, card in pairs(cardPool) do
+		if card.rarity == targetRarity then
+			table.insert(availableCards, card)
+		end
+	end
+	
+	-- If no cards of target rarity, fall back to random selection
+	if #availableCards == 0 then
+		print("⚠️ No cards found for rarity:", targetRarity, "- using random selection")
+		return cardPool[math.random(#cardPool)]
+	end
+	
+	-- Select random card from filtered list
+	return availableCards[math.random(#availableCards)]
+end
+
+-- Function to generate a single random card with weighted rarity (for conveyor system)
+local function generateCard()
+	local randomCard = getRandomCardFromPool(true)  -- true = for conveyor (frequent legendaries)
 	if not randomCard then
-		print("❌ ERROR: Failed to get random card from cardPool")
 		return nil
 	end
 
@@ -521,8 +578,13 @@ local function spawnConveyorCard()
 	end
 	print("🎴 DEBUG: Card name:", cardData.name, "Rarity:", cardData.rarity, "RarityString:", cardData.rarityString)
 
-	-- Determine cost based on rarity
-	local cost = ConveyorClaimCosts[cardData.rarity] or 10
+	-- Determine cost based on rarity (use actual card value for Legendary cards)
+	local cost
+	if cardData.rarityString == "Legendary" then
+		cost = cardData.value  -- Use actual card price for stretch goals
+	else
+		cost = ConveyorClaimCosts[cardData.rarity] or 10
+	end
 	print("🎴 DEBUG: Card cost determined:", cost, "coins")
 
 	-- Create card object on conveyor (standing upright)
@@ -530,8 +592,8 @@ local function spawnConveyorCard()
 	print("🎴 DEBUG: conveyorLength =", conveyorLength)
 	local cardObject = Instance.new("Part")
 	cardObject.Name = "ConveyorCard_" .. cardData.name
-	cardObject.Size = Vector3.new(0.4, 6, 4)  -- DOUBLED: thin, tall, card-width (was 0.2, 3, 2)
-	cardObject.Position = Vector3.new(-conveyorLength/2, 4, 0)  -- Higher position for larger card
+	cardObject.Size = Vector3.new(0.48, 7.2, 4.8)  -- 20% LARGER: thin, tall, card-width (was 0.4, 6, 4)
+	cardObject.Position = Vector3.new(-conveyorLength/2, 4.6, 0)  -- Adjusted for 20% larger card height
 	cardObject.Anchored = true
 	cardObject.CanCollide = false
 	cardObject.Material = Enum.Material.SmoothPlastic
@@ -744,7 +806,7 @@ local function spawnConveyorCard()
 	-- Add proximity detection for claiming (scaled for double-size card)
 	local proximityZone = Instance.new("Part")
 	proximityZone.Name = "ProximityZone"
-	proximityZone.Size = Vector3.new(8, 8, 8)  -- Larger claim area for bigger card
+	proximityZone.Size = Vector3.new(9.6, 9.6, 9.6)  -- 20% larger claim area to match bigger card
 	proximityZone.Position = cardObject.Position + Vector3.new(0, 1, 0)
 	proximityZone.Anchored = true
 	proximityZone.CanCollide = false
@@ -765,12 +827,17 @@ local function spawnConveyorCard()
 
 	-- Set up proximity detection
 	proximityZone.Touched:Connect(function(hit)
+		print("🎴 DEBUG: Proximity zone touched by:", hit.Name, "Parent:", hit.Parent.Name)
 		local player = Players:GetPlayerFromCharacter(hit.Parent)
 		if player then
+			print("🎴 DEBUG: Player", player.Name, "entered conveyor card proximity:", cardData.name)
 			-- Send proximity event to client
 			local proximityEvent = ReplicatedStorage:FindFirstChild("NPCDetectionEvent")
 			if proximityEvent then
+				print("🎴 DEBUG: Sending proximity event to", player.Name)
 				proximityEvent:FireClient(player, true, "Press E to claim " .. cardData.name .. " for " .. cost .. " coins!")
+			else
+				print("❌ NPCDetectionEvent not found!")
 			end
 		end
 	end)
@@ -1081,31 +1148,44 @@ local function calculateMoneyEarned(player)
 	local lastCollection = DisplayCardEarnings[userId].lastCollection or currentTime
 	local timeSinceLastCollection = currentTime - lastCollection
 
-	-- Calculate money: sum of each card's earnings per second * time
-	local totalEarningsPerSecond = 0
-	for _, displayCard in ipairs(displayedCards) do
-		local card = displayCard.card
-		local earningsPerSecond = card.earningsPerSecond or 1 -- Default to 1 if not set
-		totalEarningsPerSecond = totalEarningsPerSecond + earningsPerSecond
-	end
-
-	local moneyEarned = totalEarningsPerSecond * timeSinceLastCollection
+	-- Calculate money: flat 1 coin per second per card * time (10-second intervals only)
+	local numDisplayedCards = #displayedCards
+	
+	-- Only award money for complete 10-second intervals (slows down tycoon system)
+	-- Each card earns 1 coin per second (not their individual earningsPerSecond)
+	local complete10SecondIntervals = math.floor(timeSinceLastCollection / 10)
+	local moneyEarned = numDisplayedCards * complete10SecondIntervals * 10 -- 1 coin/sec/card * intervals * 10 sec
 	return math.floor(moneyEarned)
 end
 
 local function collectMoneyFromDisplay(player)
-	local moneyEarned = calculateMoneyEarned(player)
-
-	if moneyEarned > 0 then
-		-- Reset the collection timer (we'll handle the actual coin addition later when getPlayerData is available)
-		if not DisplayCardEarnings[player.UserId] then
-			DisplayCardEarnings[player.UserId] = {}
-		end
-		DisplayCardEarnings[player.UserId].lastCollection = tick()
-		print("💰 DEBUG: Reset collection timer for", player.Name, "at time", tick())
+	local userId = player.UserId
+	if not DisplayCardEarnings[userId] then
+		return 0
 	end
 
-	return moneyEarned
+	local currentTime = tick()
+	local lastCollection = DisplayCardEarnings[userId].lastCollection or currentTime
+	local timeSinceLastCollection = currentTime - lastCollection
+	
+	-- Calculate money for complete 10-second intervals
+	local complete10SecondIntervals = math.floor(timeSinceLastCollection / 10)
+	
+	if complete10SecondIntervals > 0 then
+		local displayedCards = DisplayTableData[userId] or {}
+		local numDisplayedCards = #displayedCards
+		
+		-- Flat rate: 1 coin per second per card (not individual earningsPerSecond)
+		local moneyEarned = numDisplayedCards * complete10SecondIntervals * 10
+		
+		-- Update collection timer to account for consumed intervals (preserve partial time)
+		DisplayCardEarnings[userId].lastCollection = lastCollection + (complete10SecondIntervals * 10)
+		print("💰 DEBUG: Collected", math.floor(moneyEarned), "coins for", player.Name, "from", complete10SecondIntervals, "intervals")
+		
+		return math.floor(moneyEarned)
+	end
+
+	return 0
 end
 
 -- Add touch events to money mats immediately
@@ -1155,15 +1235,8 @@ for tableNum = 1, MaxTables do
 
 						print("💰 DEBUG: Queued", moneyCollected, "coins for collection by", player.Name)
 
-						-- Send immediate notification that money is being processed
-						local collectMoneyEvent = ReplicatedStorage:FindFirstChild("CollectMoneyEvent")
-						if collectMoneyEvent then
-							local result = {
-								coinsCollected = 0,
-								message = "💰 Processing " .. moneyCollected .. " coins... Please wait!"
-							}
-							collectMoneyEvent:FireClient(player, result)
-						end
+						-- REMOVED: Processing notification (was causing duplicate messages)
+						-- The actual collection notification will come from the queue processor
 					else
 						print("💰 DEBUG: No money to collect for", player.Name)
 						-- Send no money message
@@ -1171,7 +1244,7 @@ for tableNum = 1, MaxTables do
 						if collectMoneyEvent then
 							local result = {
 								coinsCollected = 0,
-								message = "No money to collect yet. Keep displaying cards!"
+								message = "Wait for 10-second intervals to complete! Check the display above your mat."
 							}
 							collectMoneyEvent:FireClient(player, result)
 						end
@@ -1844,8 +1917,8 @@ cardPool = {
 	{
 		name = "Ohio Final Boss", 
 		rarity = "UltraRare", 
-		value = 150, -- Expensive boss card
-		earningsPerSecond = 12, -- High earnings for ultra rare
+		value = 120, -- Expensive boss card
+		earningsPerSecond = 6, -- Reduced from 12 for better balance
 		type = "Boss", 
 		id = "BR004", 
 		imageId = "rbxassetid://120257323495301"
@@ -1877,8 +1950,8 @@ cardPool = {
 	{
 		name = "Cancelvania Dracula", 
 		rarity = "UltraRare", 
-		value = 120, -- Rare crossover meme
-		earningsPerSecond = 10, -- High earnings for cultural reference
+		value = 100, -- Rare crossover meme
+		earningsPerSecond = 5, -- Reduced from 10 for better balance
 		type = "Character", 
 		id = "BR007", 
 		imageId = "rbxassetid://134486937300845"
@@ -1888,8 +1961,8 @@ cardPool = {
 	{
 		name = "Influencer Meltdown", 
 		rarity = "Secret", 
-		value = 300, -- Most expensive - peak brainrot
-		earningsPerSecond = 25, -- Massive earnings for secret card
+		value = 200, -- Expensive but not stretch goal level
+		earningsPerSecond = 8, -- Reduced from 25 for better balance
 		type = "Event", 
 		id = "BR008", 
 		imageId = "rbxassetid://127527676106137"
@@ -1915,6 +1988,40 @@ cardPool = {
 		type = "Action", 
 		id = "BR010", 
 		imageId = "rbxassetid://118264526473151"
+	},
+	
+	-- Ball Hog - Sports themed
+	{
+		name = "Ball Hog", 
+		rarity = "Common", 
+		value = 25, -- Regular common card
+		earningsPerSecond = 3, -- Standard earnings for common
+		type = "Sports", 
+		id = "BR011", 
+		imageId = "rbxassetid://83229260490753"
+	},
+	
+	-- STRETCH GOAL CARDS - Rare and Expensive (appear less frequently)
+	-- Kpop Karaoke - Music/Entertainment themed
+	{
+		name = "Kpop Karaoke", 
+		rarity = "Legendary", 
+		value = 4500, -- 30+ minute goal (aspirational pricing)
+		earningsPerSecond = 15, -- Reduced but still premium (was 50)
+		type = "Entertainment", 
+		id = "SG001", 
+		imageId = "rbxassetid://115085450059148"
+	},
+	
+	-- Admin Abuse Warrior - Gaming/Power themed
+	{
+		name = "Admin Abuse Warrior", 
+		rarity = "Legendary", 
+		value = 6000, -- Ultimate 45+ minute goal
+		earningsPerSecond = 20, -- Reduced but highest in game (was 75)
+		type = "Power", 
+		id = "SG002", 
+		imageId = "rbxassetid://100633884257174"
 	}
 }
 
@@ -1936,6 +2043,199 @@ function generateMutatedCard(baseCard)
 		originalValue = baseCard.value -- Store original value for reference
 	}
 	return mutatedCard
+end
+
+-- Function to create a visual display card on the table (similar to conveyor cards but smaller)
+local function createVisualDisplayCard(cardData, tableNumber, position)
+	-- Create card object (smaller than conveyor cards)
+	local cardObject = Instance.new("Part")
+	cardObject.Name = "DisplayCard_" .. cardData.name .. "_" .. cardData.instanceId
+	cardObject.Size = Vector3.new(0.3, 4, 3)  -- Smaller than conveyor: 0.48, 7.2, 4.8
+	cardObject.Position = position
+	cardObject.Anchored = true
+	cardObject.CanCollide = false
+	cardObject.Material = Enum.Material.SmoothPlastic
+	cardObject.BrickColor = BrickColor.new("White")
+	cardObject.Parent = workspace
+
+	-- Create surface GUIs for both visible faces (left and right)
+	local cardGuiLeft = Instance.new("SurfaceGui")
+	cardGuiLeft.Name = "CardGUILeft"
+	cardGuiLeft.Face = Enum.NormalId.Left
+	cardGuiLeft.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	cardGuiLeft.PixelsPerStud = 50
+	cardGuiLeft.Parent = cardObject
+
+	local cardGuiRight = Instance.new("SurfaceGui")
+	cardGuiRight.Name = "CardGUIRight"
+	cardGuiRight.Face = Enum.NormalId.Right
+	cardGuiRight.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	cardGuiRight.PixelsPerStud = 50
+	cardGuiRight.Parent = cardObject
+
+	-- Create the main card frame
+	local cardFrame = Instance.new("Frame")
+	cardFrame.Size = UDim2.new(1, 0, 1, 0)
+	cardFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	cardFrame.BorderSizePixel = 0
+	cardFrame.Parent = cardGuiLeft
+
+	local cardCorner = Instance.new("UICorner")
+	cardCorner.CornerRadius = UDim.new(0, 8)
+	cardCorner.Parent = cardFrame
+
+	-- Card image (80% of the card)
+	local cardImage = Instance.new("ImageLabel")
+	cardImage.Size = UDim2.new(0.8, 0, 0.8, 0)
+	cardImage.Position = UDim2.new(0.1, 0, 0.1, 0)
+	cardImage.BackgroundTransparency = 1
+	cardImage.Image = cardData.imageId or ""
+	cardImage.ScaleType = Enum.ScaleType.Crop
+	cardImage.Parent = cardFrame
+
+	local imageCorner = Instance.new("UICorner")
+	imageCorner.CornerRadius = UDim.new(0, 6)
+	imageCorner.Parent = cardImage
+
+	-- Info panel (bottom 20%)
+	local infoFrame = Instance.new("Frame")
+	infoFrame.Size = UDim2.new(1, 0, 0.2, 0)
+	infoFrame.Position = UDim2.new(0, 0, 0.8, 0)
+	infoFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	infoFrame.BorderSizePixel = 0
+	infoFrame.Parent = cardFrame
+
+	-- Card name (left side of info panel)
+	local cardName = Instance.new("TextLabel")
+	cardName.Size = UDim2.new(0.6, 0, 1, 0)
+	cardName.Position = UDim2.new(0.02, 0, 0, 0)
+	cardName.BackgroundTransparency = 1
+	cardName.Text = cardData.name
+	cardName.TextColor3 = Color3.fromRGB(255, 255, 255)
+	cardName.TextScaled = true
+	cardName.Font = Enum.Font.GothamBold
+	cardName.TextXAlignment = Enum.TextXAlignment.Left
+	cardName.Parent = infoFrame
+
+	-- Earnings label (right side of info panel)
+	local earningsLabel = Instance.new("TextLabel")
+	earningsLabel.Size = UDim2.new(0.35, 0, 1, 0)
+	earningsLabel.Position = UDim2.new(0.63, 0, 0, 0)
+	earningsLabel.BackgroundTransparency = 1
+	earningsLabel.Text = "📈 +" .. (cardData.earningsPerSecond or 1) .. "/sec"
+	earningsLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+	earningsLabel.TextScaled = true
+	earningsLabel.Font = Enum.Font.Gotham
+	earningsLabel.TextXAlignment = Enum.TextXAlignment.Right
+	earningsLabel.Parent = infoFrame
+
+	-- Create the same design for the right face
+	local cardFrameRight = cardFrame:Clone()
+	cardFrameRight.Parent = cardGuiRight
+
+	-- Add mutation effects if card is mutated
+	if cardData.mutation and cardData.mutation == "Error" then
+		-- Add mutation filter to both faces
+		for _, gui in pairs({cardGuiLeft, cardGuiRight}) do
+			local frame = gui:FindFirstChild("Frame")
+			local image = frame and frame:FindFirstChild("ImageLabel")
+			if frame and image then
+				-- Red corruption filter overlay (as sibling to preserve original image)
+				local mutationFilter = Instance.new("Frame")
+				mutationFilter.Name = "MutationFilter"
+				mutationFilter.Size = image.Size
+				mutationFilter.Position = image.Position
+				mutationFilter.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+				mutationFilter.BackgroundTransparency = 0.8
+				mutationFilter.BorderSizePixel = 0
+				mutationFilter.ZIndex = 5
+				mutationFilter.Parent = frame
+
+				local filterCorner = Instance.new("UICorner")
+				filterCorner.CornerRadius = UDim.new(0, 6)
+				filterCorner.Parent = mutationFilter
+
+				-- Add warning symbol
+				local warningSymbol = Instance.new("TextLabel")
+				warningSymbol.Name = "MutationWarning"
+				warningSymbol.Size = UDim2.new(0, 15, 0, 15)
+				warningSymbol.Position = UDim2.new(1, -18, 0, 3)
+				warningSymbol.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+				warningSymbol.BackgroundTransparency = 0.3
+				warningSymbol.Text = "⚠️"
+				warningSymbol.TextColor3 = Color3.fromRGB(255, 255, 0)
+				warningSymbol.TextSize = 12
+				warningSymbol.Font = Enum.Font.GothamBold
+				warningSymbol.ZIndex = 10
+				warningSymbol.Parent = frame
+
+				local symbolCorner = Instance.new("UICorner")
+				symbolCorner.CornerRadius = UDim.new(0, 8)
+				symbolCorner.Parent = warningSymbol
+			end
+		end
+
+		-- Tint the card object itself slightly
+		cardObject.Color = Color3.fromRGB(255, 200, 200)
+	end
+
+	return cardObject
+end
+
+-- Function to update visual display cards for a player's table
+local function updateVisualDisplayCards(player)
+	print("🎴 DEBUG: updateVisualDisplayCards called for", player.Name)
+	local userId = player.UserId
+	local assignedTable = TableAssignments[userId]
+	if not assignedTable then
+		print("🎴 DEBUG: No assigned table for", player.Name)
+		return
+	end
+	print("🎴 DEBUG: Player", player.Name, "assigned to table", assignedTable)
+
+	-- Remove existing display cards
+	for _, obj in pairs(workspace:GetChildren()) do
+		if obj.Name:find("DisplayCard_") and obj:GetAttribute("PlayerUserId") == userId then
+			obj:Destroy()
+		end
+	end
+
+	-- Get player's displayed cards
+	local displayedCards = DisplayTableData[userId] or {}
+	print("🎴 DEBUG: Found", #displayedCards, "displayed cards for", player.Name)
+	
+	-- Create visual cards in a 2x2 grid on the table
+	for i, displayCard in ipairs(displayedCards) do
+		if i <= 4 then -- Max 4 cards
+			local table = workspace:FindFirstChild("CardDisplayTable" .. assignedTable)
+			if table then
+				-- Calculate position in 2x2 grid on table (improved spacing)
+				local row = math.ceil(i / 2) -- 2 cards per row
+				local col = ((i - 1) % 2) + 1
+				local xOffset = (col - 1.5) * 2.5 -- 2.5 units apart (wider spacing)
+				local zOffset = (row - 1.5) * 2.5 -- 2.5 units apart (deeper spacing)
+				
+				local cardPosition = table.Position + Vector3.new(xOffset, 2.5, zOffset) -- Above table
+				print("🎴 DEBUG: Creating visual card", i, "for", player.Name, "at position:", cardPosition, "row:", row, "col:", col)
+				
+				local success, visualCard = pcall(function()
+					return createVisualDisplayCard(displayCard.card, assignedTable, cardPosition)
+				end)
+				
+				if success and visualCard then
+					-- Tag the card with player info for cleanup
+					visualCard:SetAttribute("PlayerUserId", userId)
+					visualCard:SetAttribute("CardInstanceId", displayCard.card.instanceId)
+					
+					print("🎴 DEBUG: Visual card", i, "created successfully:", visualCard.Name)
+				else
+					print("🎴 ERROR: Failed to create visual card", i, "for", player.Name, "Error:", visualCard)
+				end
+			else
+				print("🎴 DEBUG: Table not found for", player.Name, "assigned table:", assignedTable)
+			end
+		end
+	end
 end
 
 -- Function to add a card to the display table
@@ -1984,6 +2284,10 @@ local function addCardToDisplayTable(player, cardInstanceId)
 	end
 
 	print("✅ Added card", cardToDisplay.name, "to display table for", player.Name, "- Now earning money!")
+	
+	-- Update visual display cards
+	updateVisualDisplayCards(player)
+	
 	return true
 end
 
@@ -1997,6 +2301,10 @@ local function removeCardFromDisplayTable(player, cardInstanceId)
 		if displayCard.card.instanceId == cardInstanceId then
 			table.remove(DisplayTableData[player.UserId], i)
 			print("✅ Removed card", displayCard.card.name, "from display table for", player.Name)
+			
+			-- Update visual display cards
+			updateVisualDisplayCards(player)
+			
 			return true
 		end
 	end
@@ -2072,9 +2380,26 @@ local function updateMoneyDisplays()
 						local displayedCards = DisplayTableData[tableOwner.UserId] or {}
 						local currentTime = tick()
 						local timeSinceLastCollection = currentTime - earnings.lastCollection
-						local moneyWaiting = math.floor(#displayedCards * MoneyEarningRate * timeSinceLastCollection)
-
-						textLabel.Text = "💰 " .. moneyWaiting .. " coins"
+						
+						-- Calculate money for complete 10-second intervals only
+						local complete10SecondIntervals = math.floor(timeSinceLastCollection / 10)
+						local numDisplayedCards = #displayedCards
+						
+						-- Flat rate: 1 coin per second per card (not individual earningsPerSecond)
+						local moneyWaiting = math.floor(numDisplayedCards * complete10SecondIntervals * 10)
+						
+						-- Show progress for partial intervals
+						local remainingTime = timeSinceLastCollection % 10
+						local progressSeconds = math.floor(remainingTime)
+						
+						if moneyWaiting > 0 then
+							textLabel.Text = "💰 " .. moneyWaiting .. " coins"
+						elseif numDisplayedCards > 0 and progressSeconds > 0 then
+							-- Show progress toward next collection
+							textLabel.Text = "⏳ " .. progressSeconds .. "/10s (" .. numDisplayedCards .. " cards)"
+						else
+							textLabel.Text = "💰 0 coins"
+						end
 					else
 						textLabel.Text = "💰 0 coins"
 					end
@@ -2212,11 +2537,15 @@ openPackEvent.OnServerEvent:Connect(function(player, packType)
 	data.coins = data.coins - cost
 	local openedCards = {}
 
-	-- Generate random cards
+	-- Generate random cards using weighted rarity system
 	for i = 1, size do
-		local randomCard = cardPool[math.random(#cardPool)]
+		local randomCard = getRandomCardFromPool(false) -- false = for packs (rare legendaries)
+		if not randomCard then
+			print("❌ Failed to generate card for pack, skipping...")
+			continue
+		end
 
-		-- Check if this card should get a mutation (1% chance)
+		-- Check if this card should get a mutation (1% chance) 
 		local newCard
 		if shouldGetMutation() then
 			newCard = generateMutatedCard(randomCard)
@@ -2288,9 +2617,13 @@ dailyRewardEvent.OnServerEvent:Connect(function(player)
 
 		data.coins = data.coins + coinReward
 
-		-- Give 1 free pack worth of cards
+		-- Give 1 free pack worth of cards using weighted rarity
 		for i = 1, 5 do
-			local randomCard = cardPool[math.random(#cardPool)]
+			local randomCard = getRandomCardFromPool(false) -- false = for packs (rare legendaries)
+			if not randomCard then
+				print("❌ Failed to generate starter card, skipping...")
+				continue
+			end
 
 			-- Check if this card should get a mutation (1% chance)
 			local newCard
@@ -2971,6 +3304,15 @@ Players.PlayerRemoving:Connect(function(player)
 
 	-- Remove from NPC proximity
 	PlayersNearNPC[player.UserId] = nil
+	
+	-- Clean up visual display cards
+	print("🧹 DEBUG: Cleaning up visual display cards for leaving player:", player.Name)
+	for _, obj in pairs(workspace:GetChildren()) do
+		if obj.Name:find("DisplayCard_") and obj:GetAttribute("PlayerUserId") == player.UserId then
+			print("🧹 DEBUG: Destroying display card:", obj.Name)
+			obj:Destroy()
+		end
+	end
 
 	-- Broadcast updated capacity to all players (only if function exists)
 	if broadcastServerCapacity then
@@ -3149,10 +3491,10 @@ spawn(function()
 	end
 end)
 
--- Update money displays every second
+-- Update money displays every 10 seconds (slowed down for better economy balance)
 spawn(function()
 	print("🔧 DEBUG: Starting money display update loop...")
-	while wait(1) do -- Update every second
+	while wait(10) do -- Update every 10 seconds (was 1 second)
 		updateMoneyDisplays()
 	end
 end)
@@ -3175,7 +3517,7 @@ local function createDisplayTables()
 
 			local displayTable = Instance.new("Part")
 			displayTable.Name = "CardDisplayTable" .. tableNum
-			displayTable.Size = Vector3.new(8, 1, 6) -- Wide table for displaying cards
+			displayTable.Size = Vector3.new(10, 1, 8) -- Bigger table for 2x2 card layout
 			displayTable.Position = Vector3.new(xPos, 1, zPos) -- Position in grid
 			displayTable.Anchored = true
 			displayTable.Material = Enum.Material.Wood
@@ -3185,8 +3527,10 @@ local function createDisplayTables()
 			-- Store table number in the table for identification
 			displayTable:SetAttribute("TableNumber", tableNum)
 
-			-- Store table number in the table for identification
-			displayTable:SetAttribute("TableNumber", tableNum)
+			-- Add ClickDetector for table interaction (prevents unwanted overlays)
+			local clickDetector = Instance.new("ClickDetector")
+			clickDetector.MaxActivationDistance = 10 -- Reasonable interaction distance
+			clickDetector.Parent = displayTable
 
 			-- Add a sign to explain the table
 			local sign = Instance.new("Part")
@@ -3324,7 +3668,7 @@ local function createDisplayTables()
 							-- Send no money to collect message
 							local result = {
 								coinsCollected = 0,
-								message = "No money to collect yet. Keep displaying cards!"
+								message = "Wait for 10-second intervals to complete! Check the display above your mat."
 							}
 							collectMoneyEvent:FireClient(player, result)
 							print("💰 Player", player.Name, "tried to collect money but none available from table", tableNum)
