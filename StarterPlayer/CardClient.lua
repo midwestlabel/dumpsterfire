@@ -453,7 +453,7 @@ function CardClient:CreateCollectionCard(parent, card, index)
 	cardImage.Size = UDim2.new(1, -6, 0, 60)
 	cardImage.Position = UDim2.new(0, 3, 0, 3)
 	cardImage.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-	cardImage.Image = self.CardImages[card.name] or self.CardImages["default"]
+	cardImage.Image = card.imageId or ""  -- Use card's direct imageId property
 	cardImage.ScaleType = Enum.ScaleType.Fit
 	cardImage.Parent = cardFrame
 
@@ -462,7 +462,7 @@ function CardClient:CreateCollectionCard(parent, card, index)
 	imageCorner.Parent = cardImage
 
 	-- If no image, show placeholder text
-	if cardImage.Image == "rbxassetid://0" then
+	if cardImage.Image == "" or cardImage.Image == "rbxassetid://0" then
 		local placeholder = Instance.new("TextLabel")
 		placeholder.Size = UDim2.new(1, 0, 1, 0)
 		placeholder.BackgroundTransparency = 1
@@ -623,22 +623,97 @@ function CardClient:AddMutationEffect(cardFrame, card)
 		return
 	end
 
-	-- Simple mutation indicator - just add a warning symbol
+	-- Find the card image to apply filter
+	local cardImage = cardFrame:FindFirstChild("ImageLabel")
+	if cardImage then
+		-- Add visual corruption filter overlay as sibling to preserve original image
+		local mutationFilter = Instance.new("Frame")
+		mutationFilter.Name = "MutationFilter"
+		mutationFilter.Size = cardImage.Size  -- Match the image size exactly
+		mutationFilter.Position = cardImage.Position  -- Match the image position exactly
+		mutationFilter.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red tint
+		mutationFilter.BackgroundTransparency = 0.8  -- More transparent to see image below
+		mutationFilter.BorderSizePixel = 0
+		mutationFilter.ZIndex = cardImage.ZIndex + 5  -- Higher than image but below other UI
+		mutationFilter.Parent = cardFrame  -- Parent to cardFrame, not cardImage
+
+		-- Add corner radius to match card image
+		local filterCorner = Instance.new("UICorner")
+		filterCorner.CornerRadius = UDim.new(0, 4)
+		filterCorner.Parent = mutationFilter
+
+		-- Add glitch pattern overlay
+		local glitchPattern = Instance.new("Frame")
+		glitchPattern.Name = "GlitchPattern"
+		glitchPattern.Size = UDim2.new(1, 0, 1, 0)
+		glitchPattern.BackgroundColor3 = Color3.fromRGB(255, 255, 0)  -- Yellow glitch
+		glitchPattern.BackgroundTransparency = 0.9  -- Very transparent to see image
+		glitchPattern.BorderSizePixel = 0
+		glitchPattern.ZIndex = 1
+		glitchPattern.Parent = mutationFilter
+
+		-- Add static/noise effect with random rectangles
+		for i = 1, 6 do  -- Fewer noise rectangles to not overwhelm image
+			local noise = Instance.new("Frame")
+			noise.Size = UDim2.new(math.random(3, 10) / 100, 0, math.random(2, 6) / 100, 0)
+			noise.Position = UDim2.new(math.random(0, 90) / 100, 0, math.random(0, 94) / 100, 0)
+			noise.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			noise.BackgroundTransparency = math.random(70, 85) / 100  -- More transparent
+			noise.BorderSizePixel = 0
+			noise.ZIndex = 2
+			noise.Parent = glitchPattern
+		end
+
+		-- Add scan lines effect for more digital corruption look
+		for i = 1, 3 do
+			local scanLine = Instance.new("Frame")
+			scanLine.Size = UDim2.new(1, 0, 0, 1)  -- Full width, 1 pixel height
+			scanLine.Position = UDim2.new(0, 0, math.random(10, 90) / 100, 0)
+			scanLine.BackgroundColor3 = Color3.fromRGB(255, 0, 255)  -- Magenta scan lines
+			scanLine.BackgroundTransparency = 0.7
+			scanLine.BorderSizePixel = 0
+			scanLine.ZIndex = 3
+			scanLine.Parent = glitchPattern
+		end
+
+		-- Animate the glitch effect
+		local glitchTween = TweenService:Create(glitchPattern,
+			TweenInfo.new(0.4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true),
+			{BackgroundTransparency = 0.95}
+		)
+		glitchTween:Play()
+
+		-- Animate the red filter
+		local filterTween = TweenService:Create(mutationFilter,
+			TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{BackgroundTransparency = 0.9}
+		)
+		filterTween:Play()
+	end
+
+	-- Warning symbol with enhanced styling
 	local errorSymbol = Instance.new("TextLabel")
-	errorSymbol.Size = UDim2.new(0, 18, 0, 18)
-	errorSymbol.Position = UDim2.new(1, -23, 0, 3)
-	errorSymbol.BackgroundTransparency = 1
+	errorSymbol.Name = "ErrorSymbol"
+	errorSymbol.Size = UDim2.new(0, 20, 0, 20)
+	errorSymbol.Position = UDim2.new(1, -25, 0, 3)
+	errorSymbol.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	errorSymbol.BackgroundTransparency = 0.3
 	errorSymbol.Text = "⚠️"
 	errorSymbol.TextColor3 = Color3.fromRGB(255, 255, 0)
-	errorSymbol.TextSize = 14
+	errorSymbol.TextSize = 16
 	errorSymbol.Font = Enum.Font.GothamBold
-	errorSymbol.ZIndex = cardFrame.ZIndex + 1
+	errorSymbol.ZIndex = cardFrame.ZIndex + 10
 	errorSymbol.Parent = cardFrame
 
-	-- Simple pulsing animation
+	-- Add rounded corners to warning symbol
+	local symbolCorner = Instance.new("UICorner")
+	symbolCorner.CornerRadius = UDim.new(0, 10)
+	symbolCorner.Parent = errorSymbol
+
+	-- Enhanced pulsing animation for warning symbol
 	local errorTween = TweenService:Create(errorSymbol,
-		TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{TextTransparency = 0.4, Size = UDim2.new(0, 20, 0, 20)}
+		TweenInfo.new(1.0, Enum.EasingStyle.Bounce, Enum.EasingDirection.InOut, -1, true),
+		{BackgroundTransparency = 0.7, Size = UDim2.new(0, 24, 0, 24), Position = UDim2.new(1, -27, 0, 1)}
 	)
 	errorTween:Play()
 
@@ -1251,7 +1326,7 @@ function CardClient:ShowPackOpeningAnimation(cards)
 		cardImage.Size = UDim2.new(1, -20, 0, 200)
 		cardImage.Position = UDim2.new(0, 10, 0, 10)
 		cardImage.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-		cardImage.Image = self.CardImages[card.name] or self.CardImages["default"]
+		cardImage.Image = card.imageId or ""  -- Use card's direct imageId property
 		cardImage.ScaleType = Enum.ScaleType.Fit
 		cardImage.Parent = cardFrame
 
@@ -1260,7 +1335,7 @@ function CardClient:ShowPackOpeningAnimation(cards)
 		imageCorner.Parent = cardImage
 
 		-- Placeholder if no image
-		if cardImage.Image == "rbxassetid://0" then
+		if cardImage.Image == "" or cardImage.Image == "rbxassetid://0" then
 			local placeholder = Instance.new("TextLabel")
 			placeholder.Size = UDim2.new(1, 0, 1, 0)
 			placeholder.BackgroundTransparency = 1
@@ -1733,8 +1808,8 @@ function CardClient:ShowLoadingScreen()
 	titleLabel.Size = UDim2.new(1, -20, 0, 60)
 	titleLabel.Position = UDim2.new(0, 10, 0, 20)
 	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "🤠 Wild West Card Collection 🤠"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	titleLabel.Text = "🔥 DUMPSTER FIRE CARDS 🔥"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 100, 50)  -- Fiery orange-red
 	titleLabel.TextSize = 24  -- Smaller text
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.TextScaled = true
@@ -1744,8 +1819,8 @@ function CardClient:ShowLoadingScreen()
 	cardIcon.Size = UDim2.new(0, 40, 0, 40)
 	cardIcon.Position = UDim2.new(0.5, -20, 0, 85)
 	cardIcon.BackgroundTransparency = 1
-	cardIcon.Text = "🃏"
-	cardIcon.TextColor3 = Color3.fromRGB(255, 215, 0)
+	cardIcon.Text = "🗑️"  -- Dumpster emoji
+	cardIcon.TextColor3 = Color3.fromRGB(255, 100, 50)
 	cardIcon.TextSize = 35
 	cardIcon.Font = Enum.Font.GothamBold
 	cardIcon.Parent = loadingFrame
@@ -1764,7 +1839,7 @@ function CardClient:ShowLoadingScreen()
 	tipLabel.Size = UDim2.new(1, -20, 0, 40)
 	tipLabel.Position = UDim2.new(0, 10, 0, 175)
 	tipLabel.BackgroundTransparency = 1
-	tipLabel.Text = "Collect cards • Battle NPCs • Build your display"
+	tipLabel.Text = "Collect Sets to win real life stickers and cards at dumpsterfirecards.com!"
 	tipLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	tipLabel.TextSize = 14
 	tipLabel.Font = Enum.Font.Gotham
@@ -2772,7 +2847,7 @@ function CardClient:CreateDisplayCard(parent, displayCard, index)
 	cardImage.Size = UDim2.new(1, -10, 0, 80)
 	cardImage.Position = UDim2.new(0, 5, 0, 5)
 	cardImage.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-	cardImage.Image = self.CardImages[displayCard.card.name] or self.CardImages["default"]
+	cardImage.Image = displayCard.card.imageId or ""  -- Use card's direct imageId property
 	cardImage.ScaleType = Enum.ScaleType.Fit
 	cardImage.Parent = cardFrame
 
@@ -2807,14 +2882,27 @@ function CardClient:CreateDisplayCard(parent, displayCard, index)
 
 	-- Value
 	local valueLabel = Instance.new("TextLabel")
-	valueLabel.Size = UDim2.new(1, -10, 0, 15)
+	valueLabel.Size = UDim2.new(0.5, -5, 0, 15)  -- Half width for value
 	valueLabel.Position = UDim2.new(0, 5, 0, 145)
 	valueLabel.BackgroundTransparency = 1
-	valueLabel.Text = displayCard.card.value .. " coins"
+	valueLabel.Text = "💎 " .. (displayCard.card.value or "0")
 	valueLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 	valueLabel.TextSize = 8
 	valueLabel.Font = Enum.Font.Gotham
+	valueLabel.TextScaled = true
 	valueLabel.Parent = cardFrame
+
+	-- Earnings per second
+	local earningsLabel = Instance.new("TextLabel")
+	earningsLabel.Size = UDim2.new(0.5, -5, 0, 15)  -- Half width for earnings
+	earningsLabel.Position = UDim2.new(0.5, 0, 0, 145)  -- Right side
+	earningsLabel.BackgroundTransparency = 1
+	earningsLabel.Text = "📈 +" .. (displayCard.card.earningsPerSecond or "1") .. "/s"
+	earningsLabel.TextColor3 = Color3.fromRGB(100, 255, 100)  -- Green for earnings
+	earningsLabel.TextSize = 8
+	earningsLabel.Font = Enum.Font.Gotham
+	earningsLabel.TextScaled = true
+	earningsLabel.Parent = cardFrame
 
 	-- Mutation indicator
 	if displayCard.card.mutation and displayCard.card.mutation == "Error" then
@@ -2982,7 +3070,7 @@ function CardClient:ShowAddCardMenu()
 			cardImage.Size = UDim2.new(1, -6, 0, 60)
 			cardImage.Position = UDim2.new(0, 3, 0, 3)
 			cardImage.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-			cardImage.Image = self.CardImages[card.name] or self.CardImages["default"]
+			cardImage.Image = card.imageId or ""  -- Use card's direct imageId property
 			cardImage.ScaleType = Enum.ScaleType.Fit
 			cardImage.ZIndex = 1003 -- Higher than card image
 			cardImage.Parent = cardButton

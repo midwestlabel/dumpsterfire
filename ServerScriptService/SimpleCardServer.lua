@@ -1,12 +1,9 @@
--- Simple Card Server for Testing - VERSION 2.0
+-- Card Server with Custom Image System
 print("🎮 Card Server Starting...")
-print("🔧 DEBUG: Script is running! Line 2 executed successfully")
-print("🔧 DEBUG: Current time:", os.date())
-print("🚨🚨🚨 THIS IS A TEST MESSAGE - IF YOU SEE THIS, THE SCRIPT IS RUNNING 🚨🚨🚨")
-print("🚨🚨🚨 SCRIPT STARTUP TIME:", os.date(), "🚨🚨🚨")
-print("🚨🚨🚨 VERSION 2.0 - COMPLETE RELOAD ATTEMPT 🚨🚨🚨")
-print("🔧 DEBUG: MaxTables variable will be:", MaxTables or "NOT DEFINED YET")
-print("🔧 DEBUG: About to define global variables...")
+print("🔧 Script is running successfully")
+print("🔧 Current time:", os.date())
+print("🔧 CUSTOM IMAGE SYSTEM ACTIVE")
+print("🔧 About to define global variables...")
 
 -- Services
 local Players = game:GetService("Players")
@@ -36,7 +33,7 @@ local BattleCooldowns = {} -- Track when players can battle again (5 minute cool
 local DisplayCardEarnings = {} -- Track money earned by each player's displayed cards
 local MoneyCollectionMats = {} -- Store references to money collection mats
 local MaxDisplayCards = 10 -- Maximum cards a player can display
-local MoneyEarningRate = 1 -- Coins per second per displayed card
+-- MoneyEarningRate removed - now each card has its own earningsPerSecond value
 local MoneyCollectionCooldown = 10 -- Seconds between money collections
 
 -- Table system configuration
@@ -498,10 +495,11 @@ local function generateCard()
 			rarity = getRarityNumber(randomCard.rarity), -- Convert to numeric rarity
 			rarityString = randomCard.rarity, -- Keep original string for display
 			value = randomCard.value,
+			earningsPerSecond = randomCard.earningsPerSecond or 1, -- Add earnings per second
 			condition = "Mint",
-			id = randomCard.id, -- Use the card's actual ID (WW001, WW002, etc.)
+			id = randomCard.id, -- Use the card's actual ID
 			imageId = randomCard.imageId, -- Add imageId for display
-			type = randomCard.type, -- Add type for emoji display
+			type = randomCard.type, -- Add type for display
 			instanceId = game:GetService("HttpService"):GenerateGUID(false) -- For individual card instances
 		}
 	end
@@ -568,24 +566,180 @@ local function spawnConveyorCard()
 	}
 	local rarityColor = rarityColors[cardData.rarity] or Color3.fromRGB(150, 150, 150)
 
-	-- TEST: Full-face image (100% coverage, no text)
+	-- CURRENT: Custom image system (full-face images with card data)
 	local cardImage = Instance.new("ImageLabel")
-	cardImage.Size = UDim2.new(1, 0, 1, 0)  -- 100% of the card face
-	cardImage.Position = UDim2.new(0, 0, 0, 0)  -- Fill entire face
+	cardImage.Size = UDim2.new(1, 0, 0.8, 0)  -- 80% of card face for image
+	cardImage.Position = UDim2.new(0, 0, 0, 0)  -- Top of card
 	cardImage.BackgroundTransparency = 1  -- Transparent background
-	cardImage.Image = "rbxassetid://114385430622242"  -- Your custom test image
-	cardImage.ScaleType = Enum.ScaleType.Stretch  -- Stretch to fill (allows distortion as requested)
-	cardImage.BorderSizePixel = 0  -- No border for clean full-face look
+	cardImage.Image = cardData.imageId or ""  -- Use the card's custom image
+	cardImage.ScaleType = Enum.ScaleType.Stretch  -- Stretch to fill
+	cardImage.BorderSizePixel = 2  -- Border for definition
+	cardImage.BorderColor3 = rarityColor  -- Rarity-colored border
 	cardImage.Parent = cardFrame
 
-	-- Add rounded corners to match card frame
+	-- Add rounded corners to the image
 	local imageCorner = Instance.new("UICorner")
-	imageCorner.CornerRadius = UDim.new(0, 8)  -- Match the card frame corners
+	imageCorner.CornerRadius = UDim.new(0, 8)
 	imageCorner.Parent = cardImage
+
+	-- Card info section at bottom (20% of card)
+	local infoFrame = Instance.new("Frame")
+	infoFrame.Size = UDim2.new(1, 0, 0.2, 0)  -- Bottom 20% for info
+	infoFrame.Position = UDim2.new(0, 0, 0.8, 0)
+	infoFrame.BackgroundColor3 = rarityColor
+	infoFrame.BackgroundTransparency = 0.1  -- Slightly transparent
+	infoFrame.BorderSizePixel = 0
+	infoFrame.Parent = cardFrame
+
+	local infoCorner = Instance.new("UICorner")
+	infoCorner.CornerRadius = UDim.new(0, 8)
+	infoCorner.Parent = infoFrame
+
+	-- Card name (larger, more prominent)
+	local cardName = Instance.new("TextLabel")
+	cardName.Size = UDim2.new(0.6, 0, 0.6, 0)  -- Left side of info area
+	cardName.Position = UDim2.new(0.02, 0, 0.1, 0)
+	cardName.BackgroundTransparency = 1
+	cardName.Text = cardData.name
+	cardName.TextColor3 = Color3.fromRGB(255, 255, 255)
+	cardName.TextScaled = true
+	cardName.Font = Enum.Font.GothamBold
+	cardName.TextStrokeTransparency = 0
+	cardName.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	cardName.Parent = infoFrame
+
+	-- Cost label (top right)
+	local costLabel = Instance.new("TextLabel")
+	costLabel.Size = UDim2.new(0.35, 0, 0.6, 0)
+	costLabel.Position = UDim2.new(0.63, 0, 0.1, 0)
+	costLabel.BackgroundTransparency = 1
+	costLabel.Text = "💰 " .. cost
+	costLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	costLabel.TextScaled = true
+	costLabel.Font = Enum.Font.GothamBold
+	costLabel.TextStrokeTransparency = 0
+	costLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	costLabel.Parent = infoFrame
+
+	-- Earnings per second label (bottom of info area)
+	local earningsLabel = Instance.new("TextLabel")
+	earningsLabel.Size = UDim2.new(1, -4, 0.3, 0)
+	earningsLabel.Position = UDim2.new(0.02, 0, 0.65, 0)
+	earningsLabel.BackgroundTransparency = 1
+	earningsLabel.Text = "📈 +" .. (cardData.earningsPerSecond or 1) .. "/sec"
+	earningsLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+	earningsLabel.TextScaled = true
+	earningsLabel.Font = Enum.Font.Gotham
+	earningsLabel.TextStrokeTransparency = 0
+	earningsLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	earningsLabel.Parent = infoFrame
+
+	-- OLD: Emoji-based design system (commented out)
+	--[[
+	local cardIcon = Instance.new("TextLabel")
+	cardIcon.Size = UDim2.new(1, 0, 0.65, 0)
+	cardIcon.Position = UDim2.new(0, 0, 0.02, 0)
+	cardIcon.BackgroundColor3 = rarityColor
+	cardIcon.BackgroundTransparency = 0.2
+	cardIcon.BorderSizePixel = 2
+	cardIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+	cardIcon.Parent = cardFrame
+
+	local typeEmojis = {
+		["Animal"] = "🐺", ["Item"] = "⚒️", ["Environment"] = "🌵", ["Plant"] = "🌸",
+		["Structure"] = "🏠", ["Vehicle"] = "🚂", ["Weapon"] = "🔫", ["Character"] = "🤠", ["Location"] = "🏛️"
+	}
+	local emoji = typeEmojis[cardData.type or "Item"] or "🎴"
+	
+	cardIcon.Text = emoji
+	cardIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
+	cardIcon.TextSize = 120
+	cardIcon.Font = Enum.Font.GothamBold
+	cardIcon.Parent = cardFrame
+	--]]
 
 	-- Create the same design for the right face
 	local cardFrameRight = cardFrame:Clone()
 	cardFrameRight.Parent = cardGuiRight
+
+	-- Add mutation effects if card is mutated
+	if cardData.mutation and cardData.mutation == "Error" then
+		-- Add mutation filter to both faces
+		for _, gui in pairs({cardGuiLeft, cardGuiRight}) do
+			local frame = gui:FindFirstChild("Frame")
+			local image = frame and frame:FindFirstChild("ImageLabel")
+			if frame and image then
+				-- Red corruption filter overlay (as sibling to preserve original image)
+				local mutationFilter = Instance.new("Frame")
+				mutationFilter.Name = "MutationFilter"
+				mutationFilter.Size = image.Size  -- Match image size exactly
+				mutationFilter.Position = image.Position  -- Match image position exactly
+				mutationFilter.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+				mutationFilter.BackgroundTransparency = 0.8  -- More transparent to see image
+				mutationFilter.BorderSizePixel = 0
+				mutationFilter.ZIndex = 5  -- Higher than image but below other UI
+				mutationFilter.Parent = frame  -- Parent to frame, not image
+
+				local filterCorner = Instance.new("UICorner")
+				filterCorner.CornerRadius = UDim.new(0, 8)
+				filterCorner.Parent = mutationFilter
+
+				-- Glitch pattern
+				local glitchPattern = Instance.new("Frame")
+				glitchPattern.Size = UDim2.new(1, 0, 1, 0)
+				glitchPattern.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+				glitchPattern.BackgroundTransparency = 0.9  -- Very transparent
+				glitchPattern.BorderSizePixel = 0
+				glitchPattern.ZIndex = 1
+				glitchPattern.Parent = mutationFilter
+
+				-- Add static noise rectangles (fewer and more transparent)
+				for i = 1, 4 do
+					local noise = Instance.new("Frame")
+					noise.Size = UDim2.new(math.random(5, 15) / 100, 0, math.random(3, 8) / 100, 0)
+					noise.Position = UDim2.new(math.random(0, 85) / 100, 0, math.random(0, 92) / 100, 0)
+					noise.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+					noise.BackgroundTransparency = math.random(75, 90) / 100  -- More transparent
+					noise.BorderSizePixel = 0
+					noise.ZIndex = 2
+					noise.Parent = glitchPattern
+				end
+
+				-- Add scan lines for digital corruption
+				for i = 1, 2 do
+					local scanLine = Instance.new("Frame")
+					scanLine.Size = UDim2.new(1, 0, 0, 1)
+					scanLine.Position = UDim2.new(0, 0, math.random(15, 85) / 100, 0)
+					scanLine.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+					scanLine.BackgroundTransparency = 0.75
+					scanLine.BorderSizePixel = 0
+					scanLine.ZIndex = 3
+					scanLine.Parent = glitchPattern
+				end
+			end
+
+			-- Add warning symbol to card frame
+			local warningSymbol = Instance.new("TextLabel")
+			warningSymbol.Name = "MutationWarning"
+			warningSymbol.Size = UDim2.new(0, 25, 0, 25)
+			warningSymbol.Position = UDim2.new(1, -30, 0, 5)
+			warningSymbol.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+			warningSymbol.BackgroundTransparency = 0.3
+			warningSymbol.Text = "⚠️"
+			warningSymbol.TextColor3 = Color3.fromRGB(255, 255, 0)
+			warningSymbol.TextSize = 20
+			warningSymbol.Font = Enum.Font.GothamBold
+			warningSymbol.ZIndex = 10
+			warningSymbol.Parent = frame
+
+			local symbolCorner = Instance.new("UICorner")
+			symbolCorner.CornerRadius = UDim.new(0, 12)
+			symbolCorner.Parent = warningSymbol
+		end
+
+		-- Make the card object itself slightly red-tinted for additional visual cue
+		cardObject.Color = Color3.fromRGB(255, 200, 200)
+	end
 
 	-- Add proximity detection for claiming (scaled for double-size card)
 	local proximityZone = Instance.new("Part")
@@ -919,9 +1073,7 @@ local function calculateMoneyEarned(player)
 	end
 
 	local displayedCards = DisplayTableData[userId] or {}
-	local cardCount = #displayedCards
-
-	if cardCount == 0 then
+	if #displayedCards == 0 then
 		return 0
 	end
 
@@ -929,9 +1081,15 @@ local function calculateMoneyEarned(player)
 	local lastCollection = DisplayCardEarnings[userId].lastCollection or currentTime
 	local timeSinceLastCollection = currentTime - lastCollection
 
-	-- Calculate money: cards * rate * time (in seconds)
-	local moneyEarned = cardCount * MoneyEarningRate * timeSinceLastCollection
+	-- Calculate money: sum of each card's earnings per second * time
+	local totalEarningsPerSecond = 0
+	for _, displayCard in ipairs(displayedCards) do
+		local card = displayCard.card
+		local earningsPerSecond = card.earningsPerSecond or 1 -- Default to 1 if not set
+		totalEarningsPerSecond = totalEarningsPerSecond + earningsPerSecond
+	end
 
+	local moneyEarned = totalEarningsPerSecond * timeSinceLastCollection
 	return math.floor(moneyEarned)
 end
 
@@ -1647,37 +1805,117 @@ local function checkCompleteSet(data)
 	return false, totalValue, uniqueCount
 end
 
--- Wild West Card Pool (made global for conveyor system)
+-- Custom Image Card Pool (Brainrot Style)
 cardPool = {
-	-- Common Cards (8 cards) - Added placeholder imageIds
-	{name = "Desert Coyote", rarity = "Common", value = 1, type = "Animal", id = "WW001", imageId = "rbxasset://textures/face.png"},
-	{name = "Rusty Horseshoe", rarity = "Common", value = 1, type = "Item", id = "WW002", imageId = "rbxasset://textures/face.png"},
-	{name = "Prairie Dog", rarity = "Common", value = 2, type = "Animal", id = "WW003", imageId = "rbxasset://textures/face.png"},
-	{name = "Tumbling Tumbleweeds", rarity = "Common", value = 1, type = "Environment", id = "WW004", imageId = "rbxasset://textures/face.png"},
-	{name = "Old Mining Cart", rarity = "Common", value = 2, type = "Item", id = "WW005", imageId = "rbxasset://textures/face.png"},
-	{name = "Cactus Flower", rarity = "Common", value = 1, type = "Plant", id = "WW006", imageId = "rbxasset://textures/face.png"},
-	{name = "Desert Scorpion", rarity = "Common", value = 2, type = "Animal", id = "WW007", imageId = "rbxasset://textures/face.png"},
-	{name = "Weathered Fence Post", rarity = "Common", value = 1, type = "Structure", id = "WW008", imageId = "rbxasset://textures/face.png"},
-
-	-- Uncommon Cards (6 cards) - Added placeholder imageIds
-	{name = "Wild Mustang", rarity = "Uncommon", value = 5, type = "Animal", id = "WW009", imageId = "rbxasset://textures/face.png"},
-	{name = "Prospector's Pan", rarity = "Uncommon", value = 8, type = "Item", id = "WW010", imageId = "rbxasset://textures/face.png"},
-	{name = "Saloon Piano", rarity = "Uncommon", value = 6, type = "Item", id = "WW011", imageId = "rbxasset://textures/face.png"},
-	{name = "Desert Rattlesnake", rarity = "Uncommon", value = 7, type = "Animal", id = "WW012", imageId = "rbxasset://textures/face.png"},
-	{name = "Covered Wagon", rarity = "Uncommon", value = 5, type = "Vehicle", id = "WW013", imageId = "rbxasset://textures/face.png"},
-	{name = "Sheriff's Badge", rarity = "Uncommon", value = 8, type = "Item", id = "WW014", imageId = "rbxasset://textures/face.png"},
-
-	-- Rare Cards (4 cards) - Added placeholder imageIds
-	{name = "Legendary Gunslinger", rarity = "Rare", value = 20, type = "Character", id = "WW015", imageId = "rbxasset://textures/face.png"},
-	{name = "Golden Revolver", rarity = "Rare", value = 25, type = "Weapon", id = "WW016", imageId = "rbxasset://textures/face.png"},
-	{name = "Frontier Locomotive", rarity = "Rare", value = 22, type = "Vehicle", id = "WW017", imageId = "rbxasset://textures/face.png"},
-	{name = "Native Chief", rarity = "Rare", value = 18, type = "Character", id = "WW018", imageId = "rbxasset://textures/face.png"},
-
-	-- Ultra Rare Cards (1 card) - Added placeholder imageId
-	{name = "Ghost Town Saloon", rarity = "UltraRare", value = 100, type = "Location", id = "WW019", imageId = "rbxasset://textures/face.png"},
-
-	-- Secret Cards (1 card) - Added placeholder imageId
-	{name = "Lost Gold Mine", rarity = "Secret", value = 500, type = "Location", id = "WW020", imageId = "rbxasset://textures/face.png"},
+	-- Karen - The first custom card
+	{
+		name = "Karen", 
+		rarity = "Uncommon", 
+		value = 15, -- Purchase price
+		earningsPerSecond = 2, -- Coins per second when displayed
+		type = "Character", 
+		id = "BR001", 
+		imageId = "rbxassetid://114385430622242"
+	},
+	
+	-- Skibidi Toilet - Peak brainrot meme
+	{
+		name = "Skibidi Toilet", 
+		rarity = "Common", 
+		value = 8, -- Cheap and common
+		earningsPerSecond = 1, -- Basic earnings
+		type = "Meme", 
+		id = "BR002", 
+		imageId = "rbxassetid://119915725273204"
+	},
+	
+	-- Doom Scroll Dave - Social media addiction
+	{
+		name = "Doom Scroll Dave", 
+		rarity = "Uncommon", 
+		value = 20, -- Moderate price
+		earningsPerSecond = 3, -- Good earnings for social media theme
+		type = "Character", 
+		id = "BR003", 
+		imageId = "rbxassetid://75653783881447"
+	},
+	
+	-- Ohio Final Boss - Ultra rare Ohio meme
+	{
+		name = "Ohio Final Boss", 
+		rarity = "UltraRare", 
+		value = 150, -- Expensive boss card
+		earningsPerSecond = 12, -- High earnings for ultra rare
+		type = "Boss", 
+		id = "BR004", 
+		imageId = "rbxassetid://120257323495301"
+	},
+	
+	-- Rizz King - Charisma meme
+	{
+		name = "Rizz King", 
+		rarity = "Rare", 
+		value = 50, -- Premium charisma
+		earningsPerSecond = 6, -- Good earnings for rare
+		type = "Character", 
+		id = "BR005", 
+		imageId = "rbxassetid://111197793202364"
+	},
+	
+	-- AI Life Coach - Modern tech anxiety
+	{
+		name = "AI Life Coach", 
+		rarity = "Rare", 
+		value = 45, -- Tech premium
+		earningsPerSecond = 5, -- Steady AI earnings
+		type = "Technology", 
+		id = "BR006", 
+		imageId = "rbxassetid://138384385514300"
+	},
+	
+	-- Cancelvania Dracula - Cancel culture meets classic horror
+	{
+		name = "Cancelvania Dracula", 
+		rarity = "UltraRare", 
+		value = 120, -- Rare crossover meme
+		earningsPerSecond = 10, -- High earnings for cultural reference
+		type = "Character", 
+		id = "BR007", 
+		imageId = "rbxassetid://134486937300845"
+	},
+	
+	-- Influencer Meltdown - The ultimate brainrot
+	{
+		name = "Influencer Meltdown", 
+		rarity = "Secret", 
+		value = 300, -- Most expensive - peak brainrot
+		earningsPerSecond = 25, -- Massive earnings for secret card
+		type = "Event", 
+		id = "BR008", 
+		imageId = "rbxassetid://127527676106137"
+	},
+	
+	-- Scammy - Classic internet scammer
+	{
+		name = "Scammy", 
+		rarity = "Uncommon", 
+		value = 18, -- Moderate scammer price
+		earningsPerSecond = 3, -- Decent earnings for scamming theme
+		type = "Character", 
+		id = "BR009", 
+		imageId = "rbxassetid://95161765723028"
+	},
+	
+	-- Lizard Button Slam - Gaming chaos
+	{
+		name = "Lizard Button Slam", 
+		rarity = "Rare", 
+		value = 45, -- Gaming themed card
+		earningsPerSecond = 7, -- Good earnings for rare card
+		type = "Action", 
+		id = "BR010", 
+		imageId = "rbxassetid://118264526473151"
+	}
 }
 
 -- Function to check if a card should get a mutation (5% chance) - made global for conveyor
@@ -1988,8 +2226,11 @@ openPackEvent.OnServerEvent:Connect(function(player, packType)
 				name = randomCard.name,
 				rarity = randomCard.rarity,
 				value = randomCard.value,
+				earningsPerSecond = randomCard.earningsPerSecond or 1, -- Include earnings per second
 				condition = "Mint",
-				id = randomCard.id, -- Use the card's actual ID (WW001, WW002, etc.)
+				id = randomCard.id, -- Use the card's actual ID
+				imageId = randomCard.imageId, -- Include custom image
+				type = randomCard.type, -- Include card type
 				instanceId = game:GetService("HttpService"):GenerateGUID(false) -- For individual card instances
 			}
 		end
