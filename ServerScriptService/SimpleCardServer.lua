@@ -48,8 +48,9 @@ print("🔧 DEBUG: TableCapacity =", TableCapacity)
 print("🔧 DEBUG: TablePlayerCounts type =", type(TablePlayerCounts))
 print("🔧 DEBUG: TableAssignments type =", type(TableAssignments))
 
--- CLEAN UP ANY EXISTING TABLES FIRST
-print("🧹 Cleaning up any existing tables and displays...")
+-- CLEAN UP ANY EXISTING TABLES FIRST (DISABLED - was removing new tables)
+print("🧹 Cleaning up any existing tables and displays... (DISABLED)")
+--[[
 for i = 1, 20 do -- Check for up to 20 tables to be safe
 	-- Remove old display tables
 	local oldTable = workspace:FindFirstChild("CardDisplayTable" .. i)
@@ -91,6 +92,7 @@ for i = 1, 20 do -- Check for up to 20 tables to be safe
 		oldSign:Destroy()
 	end
 end
+--]]
 
 -- Also remove any standalone tables that might be at spawn or other locations
 local testTable = workspace:FindFirstChild("TestTable")
@@ -99,14 +101,16 @@ if testTable then
 	testTable:Destroy()
 end
 
--- Remove any other stray table parts
+-- Remove any other stray table parts (DISABLED - was too aggressive)
+print("🧹 Stray object cleanup disabled to prevent removing new tables/conveyor")
+--[[
 for _, obj in pairs(workspace:GetChildren()) do
 	if obj:IsA("Part") then
 		-- Check for ANY table-like objects (more aggressive cleanup)
 		if obj.Name:match("Table") or obj.Name:match("Mat") or obj.Name:match("Display") or 
 			obj.Name:match("Card") or obj.Name:match("Money") or obj.Name:match("Floating") then
 			if not obj.Name:match("CardDisplayTable") and not obj.Name:match("MoneyCollectionMat") and 
-				not obj.Name:match("FloatingTextAnchor") then -- Don't remove our new tables
+				not obj.Name:match("FloatingTextAnchor") and not obj.Name:match("DisplayCard_") then -- Don't remove our new tables
 				print("🧹 Removing stray object:", obj.Name, "at position", obj.Position)
 				obj:Destroy()
 			end
@@ -123,11 +127,13 @@ for _, obj in pairs(workspace:GetChildren()) do
 		end
 	end
 end
+--]]
 
-print("🧹 Cleanup complete!")
+print("🧹 Cleanup complete (most cleanup disabled)!")
 
--- ADDITIONAL AGGRESSIVE CLEANUP - Search for any objects that look like tables
-print("🧹 Performing additional aggressive cleanup...")
+-- ADDITIONAL AGGRESSIVE CLEANUP - Search for any objects that look like tables (DISABLED)
+print("🧹 Additional aggressive cleanup disabled")
+--[[
 for _, obj in pairs(workspace:GetChildren()) do
 	if obj:IsA("Part") then
 		-- Check if this looks like a table (wooden, brown, table-like size)
@@ -154,10 +160,12 @@ for _, obj in pairs(workspace:GetChildren()) do
 		end
 	end
 end
-print("🧹 Additional cleanup complete!")
+--]]
+print("🧹 Additional cleanup complete (disabled)!")
 
--- FINAL AGGRESSIVE CLEANUP - Search for any objects in the table area
-print("🧹 Performing final aggressive cleanup in table area...")
+-- FINAL AGGRESSIVE CLEANUP - Search for any objects in the table area (DISABLED)
+print("🧹 Final aggressive cleanup disabled")
+--[[
 for _, obj in pairs(workspace:GetChildren()) do
 	if obj:IsA("Part") then
 		-- Check if this object is in the table grid area (between -60 and +60 on X and Z)
@@ -175,17 +183,22 @@ for _, obj in pairs(workspace:GetChildren()) do
 					obj.Name:match("Table") or obj.Name:match("Mat") or obj.Name:match("Display") or
 					obj.Name:match("Card") or obj.Name:match("Money") or obj.Name:match("Floating") then
 
-					print("🧹 FINAL CLEANUP: Removing object in table area:", obj.Name, "at position", obj.Position)
-					obj:Destroy()
-				end
+					-- Don't remove our new system
+					if not obj.Name:match("CardDisplayTable") and not obj.Name:match("MoneyCollectionMat") and 
+						not obj.Name:match("FloatingTextAnchor") and not obj.Name:match("DisplayCard_") then
+						print("🧹 FINAL CLEANUP: Removing object in table area:", obj.Name, "at position", obj.Position)
+						obj:Destroy()
+					end
 			end
 		end
 	end
 end
-print("🧹 Final cleanup complete!")
+--]]
+print("🧹 Final cleanup complete (disabled)!")
 
--- SPECIFIC CLEANUP FOR THE PROBLEM AREA (between mat 1 and mat 6)
-print("🧹 SPECIFIC CLEANUP: Targeting the problem area between mat 1 and mat 6...")
+-- SPECIFIC CLEANUP FOR THE PROBLEM AREA (between mat 1 and mat 6) (DISABLED)
+print("🧹 SPECIFIC CLEANUP disabled to prevent removing new objects")
+--[[
 for _, obj in pairs(workspace:GetChildren()) do
 	if obj:IsA("Part") then
 		-- Target the specific area where the old table and mat are located
@@ -206,9 +219,12 @@ for _, obj in pairs(workspace:GetChildren()) do
 		end
 	end
 end
-print("🧹 Specific cleanup complete!")
+--]]
+print("🧹 Specific cleanup complete (disabled)!")
 
--- MIDDLE ROW CLEANUP - Target the empty middle row between table rows
+-- MIDDLE ROW CLEANUP - Target the empty middle row between table rows (DISABLED)
+print("🧹 Middle row cleanup disabled")
+--[[
 print("🧹 MIDDLE ROW CLEANUP: Targeting the middle row between table 1-5 and 6-10...")
 for _, obj in pairs(workspace:GetChildren()) do
 	if obj:IsA("Part") then
@@ -233,8 +249,12 @@ for _, obj in pairs(workspace:GetChildren()) do
 		end
 	end
 end
-print("🧹 Middle row cleanup complete!")
+--]]
+print("🧹 Middle row cleanup complete (disabled)!")
 
+-- ALL REMAINING CLEANUP FUNCTIONS DISABLED TO PREVENT REMOVING NEW TABLES/CONVEYOR
+print("🧹 ALL REMAINING CLEANUP DISABLED")
+--[[
 -- CLEANUP OBJECTS WITH DISPLAY BOARDS - Target objects that have SurfaceGui or BillboardGui children
 print("🧹 DISPLAY BOARD CLEANUP: Removing objects with display boards...")
 for _, obj in pairs(workspace:GetChildren()) do
@@ -280,7 +300,7 @@ for _, obj in pairs(workspace:GetChildren()) do
 		end
 		
 		-- Check for old display naming patterns
-		if obj.Name:match("Display") and not obj.Name:match("FloatingTextAnchor") then
+		if obj.Name:match("Display") and not obj.Name:match("FloatingTextAnchor") and not obj.Name:match("DisplayCard_") then
 			isOldTable = true
 		end
 		
@@ -393,7 +413,8 @@ for _, obj in pairs(workspace:GetChildren()) do
 	end
 end
 print("🧹 Final table cleanup complete!")
-
+--]]
+print("🧹 ALL CLEANUP FUNCTIONS DISABLED TO PREVENT REMOVING NEW OBJECTS")
 
 
 -- DEBUG: Check if we reach this point
@@ -2501,7 +2522,7 @@ openPackEvent.OnServerEvent:Connect(function(player, packType)
 				-- Check for old table/mat patterns with display boards
 				if (obj.Name:match("Table") or obj.Name:match("Mat") or obj.Name:match("Display")) and
 					not (obj.Name:match("CardDisplayTable") or obj.Name:match("MoneyCollectionMat") or 
-						obj.Name:match("FloatingTextAnchor")) then
+						obj.Name:match("FloatingTextAnchor") or obj.Name:match("DisplayCard_")) then
 					
 					-- Additional check: does it have display boards?
 					for _, child in pairs(obj:GetChildren()) do
@@ -3003,7 +3024,8 @@ local function handleDebugCommand(player, message)
 						-- Don't remove our new system
 						if not obj.Name:match("CardDisplayTable") and 
 							not obj.Name:match("MoneyCollectionMat") and
-							not obj.Name:match("FloatingTextAnchor") then
+							not obj.Name:match("FloatingTextAnchor") and
+							not obj.Name:match("DisplayCard_") then
 
 							print("🧹 MANUAL CLEANUP: Removing", obj.Name, "at position", obj.Position)
 							obj:Destroy()
@@ -3269,7 +3291,7 @@ Players.PlayerAdded:Connect(function(player)
 				-- Check for old table/mat patterns with display boards
 				if (obj.Name:match("Table") or obj.Name:match("Mat") or obj.Name:match("Display")) and
 					not (obj.Name:match("CardDisplayTable") or obj.Name:match("MoneyCollectionMat") or 
-						obj.Name:match("FloatingTextAnchor")) then
+						obj.Name:match("FloatingTextAnchor") or obj.Name:match("DisplayCard_")) then
 					
 					-- Additional check: does it have display boards?
 					for _, child in pairs(obj:GetChildren()) do
@@ -3975,7 +3997,7 @@ spawn(function()
 	end
 end)
 
--- Periodic cleanup to catch any persistent old objects that might get saved with the place
+		-- Periodic cleanup to catch any persistent old objects that might get saved with the place
 spawn(function()
 	while wait(60) do -- Every 60 seconds
 		print("🧹 PERIODIC CLEANUP: Checking for old objects that might have persisted...")
@@ -3988,7 +4010,7 @@ spawn(function()
 				-- Check for old table/mat patterns with display boards
 				if (obj.Name:match("Table") or obj.Name:match("Mat") or obj.Name:match("Display")) and
 					not (obj.Name:match("CardDisplayTable") or obj.Name:match("MoneyCollectionMat") or 
-						obj.Name:match("FloatingTextAnchor")) then
+						obj.Name:match("FloatingTextAnchor") or obj.Name:match("DisplayCard_")) then
 					
 					-- Additional check: does it have display boards?
 					for _, child in pairs(obj:GetChildren()) do
