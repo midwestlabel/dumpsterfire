@@ -3262,6 +3262,10 @@ local startBattleEvent = ReplicatedStorage:WaitForChild("StartBattleEvent")
 local npcProximityActive = false
 local proximityPrompt = nil
 
+-- Mobile detection
+local userInputService = game:GetService("UserInputService")
+local isMobile = userInputService.TouchEnabled and not userInputService.KeyboardEnabled
+
 -- Handle NPC proximity detection
 npcDetectionEvent.OnClientEvent:Connect(function(isNear, message)
 	if isNear and not npcProximityActive then
@@ -3274,8 +3278,13 @@ npcDetectionEvent.OnClientEvent:Connect(function(isNear, message)
 		proximityPrompt.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 		local promptFrame = Instance.new("Frame")
-		promptFrame.Size = UDim2.new(0, 300, 0, 80)
-		promptFrame.Position = UDim2.new(0.5, -150, 0.8, 0)
+		if isMobile then
+			promptFrame.Size = UDim2.new(0, 320, 0, 120) -- Larger for mobile with button
+			promptFrame.Position = UDim2.new(0.5, -160, 0.65, 0) -- Higher up for mobile to prevent cutoff
+		else
+			promptFrame.Size = UDim2.new(0, 300, 0, 80)
+			promptFrame.Position = UDim2.new(0.5, -150, 0.8, 0) -- Desktop position
+		end
 		promptFrame.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
 		promptFrame.BorderSizePixel = 0
 		promptFrame.Parent = proximityPrompt
@@ -3285,35 +3294,79 @@ npcDetectionEvent.OnClientEvent:Connect(function(isNear, message)
 		corner.Parent = promptFrame
 
 		local promptText = Instance.new("TextLabel")
-		promptText.Size = UDim2.new(1, 0, 1, 0)
+		if isMobile then
+			promptText.Size = UDim2.new(1, 0, 0.5, 0) -- Top half for mobile
+			promptText.Text = "🎴 " .. message:gsub("Press E", "Tap button below")
+		else
+			promptText.Size = UDim2.new(1, 0, 1, 0)
+			promptText.Text = message
+		end
 		promptText.BackgroundTransparency = 1
-		promptText.Text = message
 		promptText.TextColor3 = Color3.fromRGB(255, 255, 255)
-		promptText.TextSize = 18
+		promptText.TextSize = 16
 		promptText.Font = Enum.Font.GothamBold
 		promptText.Parent = promptFrame
 
-		-- Set up E key detection
-		local userInputService = game:GetService("UserInputService")
+		-- Add tap button for mobile users
+		local tapButton = nil
+		if isMobile then
+			tapButton = Instance.new("TextButton")
+			tapButton.Size = UDim2.new(0.9, 0, 0.45, 0) -- Slightly larger button
+			tapButton.Position = UDim2.new(0.05, 0, 0.5, 0) -- Centered better
+			tapButton.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+			tapButton.BorderSizePixel = 0
+			tapButton.Text = "📱 TAP TO CLAIM"
+			tapButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+			tapButton.TextSize = 20
+			tapButton.Font = Enum.Font.GothamBold
+			tapButton.Parent = promptFrame
+
+			local buttonCorner = Instance.new("UICorner")
+			buttonCorner.CornerRadius = UDim.new(0, 6)
+			buttonCorner.Parent = tapButton
+
+			-- Add button press effect
+			tapButton.MouseButton1Down:Connect(function()
+				tapButton.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
+			end)
+			
+			tapButton.MouseButton1Up:Connect(function()
+				tapButton.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+			end)
+		end
 
 
-		-- Simple E key press detection
+		-- Function to handle card claiming (shared between E key and tap button)
+		local function claimCard()
+			print("🎴 Card claim triggered!")
+			startBattleEvent:FireServer()
+
+			-- Remove prompt after use
+			if proximityPrompt then
+				proximityPrompt:Destroy()
+				proximityPrompt = nil
+			end
+			npcProximityActive = false
+
+			-- Disconnect E key listener
+			if eKeyConnection then
+				eKeyConnection:Disconnect()
+			end
+		end
+
+		-- Set up tap button functionality for mobile
+		if isMobile and tapButton then
+			tapButton.MouseButton1Click:Connect(function()
+				print("🎴 Mobile tap button pressed - claiming card!")
+				claimCard()
+			end)
+		end
+
+		-- E key press detection for desktop
 		local eKeyConnection = userInputService.InputBegan:Connect(function(input, gameProcessed)
 			if input.KeyCode == Enum.KeyCode.E and not gameProcessed and npcProximityActive then
 				print("🎴 E key pressed - claiming card!")
-				startBattleEvent:FireServer()
-
-				-- Remove prompt after use
-				if proximityPrompt then
-					proximityPrompt:Destroy()
-					proximityPrompt = nil
-				end
-				npcProximityActive = false
-
-				-- Disconnect E key listener
-				if eKeyConnection then
-					eKeyConnection:Disconnect()
-				end
+				claimCard()
 			end
 		end)
 
