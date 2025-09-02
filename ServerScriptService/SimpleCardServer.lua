@@ -38,7 +38,7 @@ local MoneyCollectionCooldown = 10 -- Seconds between money collections
 
 -- Table system configuration
 MaxTables = 10 -- Total number of tables
-TableCapacity = 10 -- Maximum players per table
+TableCapacity = 1 -- Maximum players per table (each player gets their own display table)
 TablePlayerCounts = {} -- Track how many players are at each table
 TableAssignments = {} -- Track which table each player is assigned to
 
@@ -3093,6 +3093,34 @@ local function assignPlayerToTable(player)
 		return existingTable
 	end
 
+	-- Validate and sync table counts with actual assignments (fix potential desync)
+	print("🔧 DEBUG: Validating table counts against assignments...")
+	local actualCounts = {}
+	for i = 1, MaxTables do
+		actualCounts[i] = 0
+	end
+	
+	-- Count actual assignments
+	for playerId, tableNum in pairs(TableAssignments) do
+		if actualCounts[tableNum] then
+			actualCounts[tableNum] = actualCounts[tableNum] + 1
+		end
+	end
+	
+	-- Check for discrepancies and fix them
+	local foundDiscrepancy = false
+	for i = 1, MaxTables do
+		if TablePlayerCounts[i] ~= actualCounts[i] then
+			print("🚨 DEBUG: Table", i, "count mismatch! Stored:", TablePlayerCounts[i], "Actual:", actualCounts[i])
+			TablePlayerCounts[i] = actualCounts[i]
+			foundDiscrepancy = true
+		end
+	end
+	
+	if foundDiscrepancy then
+		print("🔧 DEBUG: Fixed table counts:", table.concat(TablePlayerCounts, ", "))
+	end
+
 	-- Find a table with available space
 	for tableNum = 1, MaxTables do
 		local currentCount = TablePlayerCounts[tableNum] or 0
@@ -3163,10 +3191,17 @@ local function removePlayerFromTable(player)
 	local userId = player.UserId
 	local tableNum = TableAssignments[userId]
 
+	print("🔧 DEBUG: removePlayerFromTable called for", player.Name, "(UserId:", userId, ")")
+	print("🔧 DEBUG: Player was assigned to table:", tableNum)
+
 	if tableNum then
-		TablePlayerCounts[tableNum] = math.max(0, TablePlayerCounts[tableNum] - 1)
+		-- Safely decrement table count
+		local currentCount = TablePlayerCounts[tableNum] or 0
+		TablePlayerCounts[tableNum] = math.max(0, currentCount - 1)
 		TableAssignments[userId] = nil
+		
 		print("👋 Removed player", player.Name, "from table", tableNum, "(Table now has", TablePlayerCounts[tableNum], "players)")
+		print("🔧 DEBUG: Updated table counts:", table.concat(TablePlayerCounts, ", "))
 
 		-- Remove "Your Table" marker and arrow when player leaves
 		local existingMarker = workspace:FindFirstChild("YourTableMarker" .. tableNum)
@@ -3180,6 +3215,8 @@ local function removePlayerFromTable(player)
 			existingArrow:Destroy()
 			print("🏠 Removed table arrow from table", tableNum)
 		end
+	else
+		print("🔧 DEBUG: Player", player.Name, "was not assigned to any table")
 	end
 end
 
