@@ -1070,8 +1070,8 @@ for tableNum = 1, MaxTables do
 
 	-- Calculate position for each table (arrange in a centered grid with more spacing)
 	local tablesPerRow = 5
-	local xSpacing = 15
-	local zSpacing = 30  -- Increased from 15 to 30 to make room for conveyor
+	local xSpacing = 20  -- Increased from 15 to 20 for larger tables
+	local zSpacing = 35  -- Increased from 30 to 35 for larger tables
 	local row = math.ceil(tableNum / tablesPerRow) - 1
 	local col = (tableNum - 1) % tablesPerRow
 
@@ -1084,21 +1084,21 @@ for tableNum = 1, MaxTables do
 	local xPos = col * xSpacing + xOffset
 	local zPos = row * zSpacing + zOffset
 
-	-- Create the display table
+	-- Create the display table (LARGER SIZE)
 	local displayTable = Instance.new("Part")
 	displayTable.Name = "CardDisplayTable" .. tableNum
-	displayTable.Size = Vector3.new(8, 1, 6)
+	displayTable.Size = Vector3.new(12, 1, 9) -- Increased from 8x1x6 to 12x1x9
 	displayTable.Position = Vector3.new(xPos, 1, zPos)
 	displayTable.Anchored = true
 	displayTable.Material = Enum.Material.Wood
 	displayTable.BrickColor = BrickColor.new("Brown")
 	displayTable.Parent = workspace
 
-	-- Create money collection mat next to the table
+	-- Create money collection mat next to the larger table
 	local moneyMat = Instance.new("Part")
 	moneyMat.Name = "MoneyCollectionMat" .. tableNum
-	moneyMat.Size = Vector3.new(4, 1, 4) -- Made much thicker and larger for better detection
-	moneyMat.Position = Vector3.new(xPos + 6, 0.5, zPos) -- Raised higher
+	moneyMat.Size = Vector3.new(5, 1, 5) -- Larger mat for larger table
+	moneyMat.Position = Vector3.new(xPos + 8, 0.5, zPos) -- Further from larger table
 	moneyMat.Anchored = true
 	moneyMat.CanCollide = true
 	moneyMat.Material = Enum.Material.Neon
@@ -1106,11 +1106,11 @@ for tableNum = 1, MaxTables do
 	moneyMat.Transparency = 0.5 -- More transparent so you can see through it
 	moneyMat.Parent = workspace
 
-	-- Create floating text display above the mat (no background part)
+	-- Create floating text display above the larger mat (no background part)
 	local floatingText = Instance.new("Part")
 	floatingText.Name = "FloatingTextAnchor" .. tableNum
 	floatingText.Size = Vector3.new(0.1, 0.1, 0.1) -- Tiny invisible anchor
-	floatingText.Position = Vector3.new(xPos + 6, 4, zPos) -- High above the money mat
+	floatingText.Position = Vector3.new(xPos + 8, 4, zPos) -- High above the larger money mat
 	floatingText.Anchored = true
 	floatingText.CanCollide = false
 	floatingText.Transparency = 1 -- Completely invisible
@@ -2090,10 +2090,10 @@ end
 
 -- Function to create a visual display card on the table (similar to conveyor cards but smaller)
 local function createVisualDisplayCard(cardData, tableNumber, position)
-	-- Create card object (smaller than conveyor cards)
+	-- Create card object (LARGER display cards)
 	local cardObject = Instance.new("Part")
 	cardObject.Name = "DisplayCard_" .. cardData.name .. "_" .. cardData.instanceId
-	cardObject.Size = Vector3.new(0.3, 4, 3)  -- Smaller than conveyor: 0.48, 7.2, 4.8
+	cardObject.Size = Vector3.new(0.5, 6, 4.5)  -- Increased from 0.3, 4, 3 to 0.5, 6, 4.5 (50% larger)
 	cardObject.Position = position
 	cardObject.Anchored = true
 	cardObject.CanCollide = false
@@ -2252,13 +2252,13 @@ local function updateVisualDisplayCards(player)
 		if i <= 4 then -- Max 4 cards
 			local table = workspace:FindFirstChild("CardDisplayTable" .. assignedTable)
 			if table then
-				-- Calculate position in 2x2 grid on table (improved spacing)
+				-- Calculate position in 2x2 grid on table (wider spacing for larger cards)
 				local row = math.ceil(i / 2) -- 2 cards per row
 				local col = ((i - 1) % 2) + 1
-				local xOffset = (col - 1.5) * 2.5 -- 2.5 units apart (wider spacing)
-				local zOffset = (row - 1.5) * 2.5 -- 2.5 units apart (deeper spacing)
+				local xOffset = (col - 1.5) * 4 -- 4 units apart (wider spacing for larger cards)
+				local zOffset = (row - 1.5) * 3.5 -- 3.5 units apart (deeper spacing for larger cards)
 				
-				local cardPosition = table.Position + Vector3.new(xOffset, 2.5, zOffset) -- Above table
+				local cardPosition = table.Position + Vector3.new(xOffset, 3.5, zOffset) -- Higher above larger table
 				print("🎴 DEBUG: Creating visual card", i, "for", player.Name, "at position:", cardPosition, "row:", row, "col:", col)
 				
 				local success, visualCard = pcall(function()
@@ -3592,14 +3592,14 @@ local function createDisplayTables()
 			print("🔧 DEBUG: Creating table", tableNum, "...")
 			local row = math.ceil(tableNum / 5) -- 5 tables per row
 			local col = ((tableNum - 1) % 5) + 1
-			local xPos = (col - 3) * 15 -- Center around 0, 15 units apart
-			local zPos = (row - 1) * 30 -- 30 units apart vertically (increased for conveyor space)
+			local xPos = (col - 3) * 20 -- Center around 0, 20 units apart (increased for larger tables)
+			local zPos = (row - 1) * 35 -- 35 units apart vertically (increased for larger tables)
 			print("🔧 DEBUG: Table", tableNum, "position: row", row, "col", col, "xPos", xPos, "zPos", zPos)
 
-			local displayTable = Instance.new("Part")
-			displayTable.Name = "CardDisplayTable" .. tableNum
-			displayTable.Size = Vector3.new(10, 1, 8) -- Bigger table for 2x2 card layout
-			displayTable.Position = Vector3.new(xPos, 1, zPos) -- Position in grid
+					local displayTable = Instance.new("Part")
+		displayTable.Name = "CardDisplayTable" .. tableNum
+		displayTable.Size = Vector3.new(15, 1, 12) -- Much bigger table for 2x2 card layout (increased from 10x1x8)
+		displayTable.Position = Vector3.new(xPos, 1, zPos) -- Position in grid
 			displayTable.Anchored = true
 			displayTable.Material = Enum.Material.Wood
 			displayTable.BrickColor = BrickColor.new("Brown")
