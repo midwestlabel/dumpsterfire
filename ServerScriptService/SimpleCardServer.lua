@@ -592,8 +592,8 @@ local function spawnConveyorCard()
 	print("🎴 DEBUG: conveyorLength =", conveyorLength)
 	local cardObject = Instance.new("Part")
 	cardObject.Name = "ConveyorCard_" .. cardData.name
-	cardObject.Size = Vector3.new(0.48, 7.2, 4.8)  -- 20% LARGER: thin, tall, card-width (was 0.4, 6, 4)
-	cardObject.Position = Vector3.new(-conveyorLength/2, 4.6, 0)  -- Adjusted for 20% larger card height
+	cardObject.Size = Vector3.new(0.576, 8.64, 5.76)  -- 40% LARGER: thin, tall, card-width (was 0.4, 6, 4 originally)
+	cardObject.Position = Vector3.new(-conveyorLength/2, 5.32, 0)  -- Adjusted for 40% larger card height
 	cardObject.Anchored = true
 	cardObject.CanCollide = false
 	cardObject.Material = Enum.Material.SmoothPlastic
@@ -806,7 +806,7 @@ local function spawnConveyorCard()
 	-- Add proximity detection for claiming (scaled for double-size card)
 	local proximityZone = Instance.new("Part")
 	proximityZone.Name = "ProximityZone"
-	proximityZone.Size = Vector3.new(9.6, 9.6, 9.6)  -- 20% larger claim area to match bigger card
+	proximityZone.Size = Vector3.new(11.52, 11.52, 11.52)  -- 40% larger claim area to match bigger card
 	proximityZone.Position = cardObject.Position + Vector3.new(0, 1, 0)
 	proximityZone.Anchored = true
 	proximityZone.CanCollide = false
@@ -2022,6 +2022,28 @@ cardPool = {
 		type = "Power", 
 		id = "SG002", 
 		imageId = "rbxassetid://100633884257174"
+	},
+	
+	-- Drip Lord - From slaps collection, high-value aspirational card
+	{
+		name = "Drip Lord", 
+		rarity = "Legendary", 
+		value = 2000, -- Around $2,000 as requested
+		earningsPerSecond = 10, -- Good earnings for Legendary
+		type = "Style", 
+		id = "SG003", 
+		imageId = "rbxassetid://110110931369711"
+	},
+	
+	-- Clipped - From Dumpster Fire collection, mid-tier card
+	{
+		name = "Clipped", 
+		rarity = "Rare", 
+		value = 55, -- Similar to other mid-tier Dumpster Fire cards
+		earningsPerSecond = 6, -- Good earnings for Rare
+		type = "Gaming", 
+		id = "BR012", 
+		imageId = "rbxassetid://79357107988447"
 	}
 }
 
